@@ -11,6 +11,11 @@ function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    const phoneRegex = /^[6-9]\d{9}$/;
+if (!phoneRegex.test(phone)) {
+  setError('Please enter a valid 10-digit Indian mobile number');
+  return;
+}
     setError('');
     setLoading(true);
 

@@ -15,7 +15,7 @@ function AdminDashboard() {
     contact: ''
   });
   const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState('centers'); // centers | hotspots
+  const [activeTab, setActiveTab] = useState('centers');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -178,7 +178,6 @@ function AdminDashboard() {
               </h2>
               <p className="text-gray-500 text-sm mt-1">Manage Cooling Centers &amp; Hotspot Reports</p>
             </div>
-            {/* Stats */}
             <div className="flex gap-3">
               <div className="text-center bg-orange-50 border border-orange-100 rounded-2xl px-5 py-3">
                 <p className="text-2xl font-extrabold text-orange-600">{centers.length}</p>
@@ -196,20 +195,18 @@ function AdminDashboard() {
         <div className="flex gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-orange-100 w-fit">
           <button
             onClick={() => setActiveTab('centers')}
-            className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'centers'
-                ? 'text-white shadow-md'
-                : 'text-gray-600 hover:bg-orange-50'
-              }`}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'centers' ? 'text-white shadow-md' : 'text-gray-600 hover:bg-orange-50'
+            }`}
             style={activeTab === 'centers' ? { background: 'linear-gradient(135deg, #f97316, #f59e0b)' } : {}}
           >
             🌿 Cooling Centers
           </button>
           <button
             onClick={() => setActiveTab('hotspots')}
-            className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'hotspots'
-                ? 'text-white shadow-md'
-                : 'text-gray-600 hover:bg-orange-50'
-              }`}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${
+              activeTab === 'hotspots' ? 'text-white shadow-md' : 'text-gray-600 hover:bg-orange-50'
+            }`}
             style={activeTab === 'hotspots' ? { background: 'linear-gradient(135deg, #f97316, #f59e0b)' } : {}}
           >
             🚨 Reports ({hotspots.length})
@@ -219,16 +216,16 @@ function AdminDashboard() {
         {/* ========== COOLING CENTERS TAB ========== */}
         {activeTab === 'centers' && (
           <>
-            {/* Add Form */}
             <div className="bg-white rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8">
               <h3 className="text-lg font-bold text-gray-900 mb-1">Add New Cooling Center</h3>
               <p className="text-sm text-gray-400 mb-6">Fill in the details to register a new cooling center</p>
 
               {message && (
-                <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl mb-5 text-sm border ${message.includes('success')
+                <div className={`flex items-center gap-2 px-4 py-3 rounded-2xl mb-5 text-sm border ${
+                  message.includes('success')
                     ? 'bg-green-50 text-green-700 border-green-200'
                     : 'bg-red-50 text-red-700 border-red-200'
-                  }`}>
+                }`}>
                   <span>{message.includes('success') ? '✅' : '⚠️'}</span>
                   <span>{message}</span>
                 </div>
@@ -244,7 +241,7 @@ function AdminDashboard() {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">City</label>
                   <input type="text" name="city" value={formData.city} onChange={handleChange} required
-                    placeholder="e.g. Ahmedabad" className={inputClass} />
+                    placeholder="e.g. Vadodara" className={inputClass} />
                 </div>
 
                 <div className="md:col-span-2">
@@ -289,7 +286,6 @@ function AdminDashboard() {
               </form>
             </div>
 
-            {/* Centers List */}
             <div className="bg-white rounded-3xl shadow-md border border-gray-100 p-6 sm:p-8">
               <h3 className="text-lg font-bold text-gray-900 mb-5">
                 All Cooling Centers
@@ -357,12 +353,14 @@ function AdminDashboard() {
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
                       <div className="flex-1 min-w-0">
                         <h4 className="font-bold text-gray-800">📍 {spot.location}</h4>
-                        <p className="text-sm text-gray-500 mt-1">{spot.city}</p>
+                        <p className="text-sm text-gray-500 mt-1">
+                          🏙️ City: <span className="font-medium text-gray-700">{spot.city}</span>
+                        </p>
                         {spot.description && (
-                          <p className="text-sm text-gray-400 mt-1.5 italic">{spot.description}</p>
+                          <p className="text-sm text-gray-400 mt-1.5 italic">📝 {spot.description}</p>
                         )}
-                        <p className="text-xs text-gray-300 mt-2">
-                          Reported by: <span className="text-gray-400 font-medium">{spot.reportedBy?.name || 'Unknown'}</span>
+                        <p className="text-xs text-gray-400 mt-2">
+                          Reported by: <span className="font-medium">{spot.reportedBy?.name || 'Unknown'}</span>
                           {' · '}{new Date(spot.createdAt).toLocaleString()}
                         </p>
                       </div>

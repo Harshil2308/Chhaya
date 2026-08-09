@@ -220,42 +220,61 @@ function UserDashboard() {
             </div>
           )}
 
-          {showReportForm && (
-            <form onSubmit={handleReportSubmit} className="space-y-3 mb-6 bg-orange-50/70 p-5 rounded-2xl border border-orange-100">
-              <input
-                type="text"
-                name="location"
-                value={reportData.location}
-                onChange={handleReportChange}
-                required
-                placeholder="📍 Location / Area name"
-                className={inputClass}
-              />
-              <input
-                type="text"
-                name="city"
-                value={reportData.city}
-                onChange={handleReportChange}
-                required
-                placeholder="🏙️ City"
-                className={inputClass}
-              />
-              <textarea
-                name="description"
-                value={reportData.description}
-                onChange={handleReportChange}
-                rows="2"
-                placeholder="📝 Short description (optional)"
-                className={inputClass + ' resize-none'}
-              />
-              <button
-                type="submit"
-                className="bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-2.5 px-6 rounded-2xl transition-all duration-200 hover:scale-[1.02]"
-              >
-                🚨 Submit Report
-              </button>
-            </form>
-          )}
+         {showReportForm && (
+  <form onSubmit={handleReportSubmit} className="space-y-3 mb-6 bg-orange-50/70 p-5 rounded-2xl border border-orange-100">
+    
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Area / Locality *
+      </label>
+      <input
+        type="text"
+        name="location"
+        value={reportData.location}
+        onChange={handleReportChange}
+        required
+        placeholder="e.g. Makarpura, Manjalpur, Gotri"
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        City *
+      </label>
+      <input
+        type="text"
+        name="city"
+        value={reportData.city}
+        onChange={handleReportChange}
+        required
+        placeholder="e.g. Vadodara"
+        className={inputClass}
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        Description (optional)
+      </label>
+      <textarea
+        name="description"
+        value={reportData.description}
+        onChange={handleReportChange}
+        rows="2"
+        placeholder="e.g. No shade near factory gate, very high heat"
+        className={inputClass + ' resize-none'}
+      />
+    </div>
+
+    <button
+      type="submit"
+      className="bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-2.5 px-6 rounded-2xl transition-all duration-200 hover:scale-[1.02]"
+    >
+      🚨 Submit Report
+    </button>
+  </form>
+)}
 
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Reports</h4>
@@ -297,7 +316,7 @@ function UserDashboard() {
           ) : (
             <>
               <div className="mb-5 rounded-2xl overflow-hidden border border-orange-100">
-                <MapView centers={centers} />
+              <MapView centers={centers} city={user.location} />
               </div>
               <div className="space-y-3">
                 {centers.map((center) => (
