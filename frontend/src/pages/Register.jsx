@@ -22,6 +22,11 @@ function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    const phoneRegex = /^[6-9]\d{9}$/;
+if (!phoneRegex.test(formData.phone)) {
+  setError('Please enter a valid 10-digit Indian mobile number');
+  return;
+}
     setError('');
     setSuccess('');
     setLoading(true);
