@@ -83,12 +83,60 @@ function UserDashboard() {
 
   const getRiskStyles = (level) => {
     switch (level) {
-      case 'Low': return { bg: 'bg-green-50 border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-800', icon: '🟢', gradient: 'from-green-400 to-emerald-500' };
-      case 'Moderate': return { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', icon: '🟡', gradient: 'from-yellow-400 to-amber-500' };
-      case 'High': return { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-800', icon: '🟠', gradient: 'from-orange-400 to-orange-600' };
-      case 'Very High': return { bg: 'bg-red-50 border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800', icon: '🔴', gradient: 'from-red-400 to-red-600' };
-      case 'Extreme': return { bg: 'bg-red-100 border-red-300', text: 'text-red-800', badge: 'bg-red-200 text-red-900', icon: '🔴', gradient: 'from-red-500 to-rose-700' };
-      default: return { bg: 'bg-gray-50 border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800', icon: '⚪', gradient: 'from-gray-400 to-gray-500' };
+      case 'Low': return { bg: 'bg-green-50 border-green-200', text: 'text-green-700', badge: 'bg-green-100 text-green-800', icon: '🟢' };
+      case 'Moderate': return { bg: 'bg-yellow-50 border-yellow-200', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', icon: '🟡' };
+      case 'High': return { bg: 'bg-orange-50 border-orange-200', text: 'text-orange-700', badge: 'bg-orange-100 text-orange-800', icon: '🟠' };
+      case 'Very High': return { bg: 'bg-red-50 border-red-200', text: 'text-red-700', badge: 'bg-red-100 text-red-800', icon: '🔴' };
+      case 'Extreme': return { bg: 'bg-red-100 border-red-300', text: 'text-red-800', badge: 'bg-red-200 text-red-900', icon: '🔴' };
+      default: return { bg: 'bg-gray-50 border-gray-200', text: 'text-gray-700', badge: 'bg-gray-100 text-gray-800', icon: '⚪' };
+    }
+  };
+
+  // Dynamic Safety Tips based on heat risk
+  const getSafetyTips = (riskLevel) => {
+    switch (riskLevel) {
+      case 'Low':
+        return [
+          'Normal outdoor work is okay',
+          'Drink water regularly',
+          'Wear light-colored clothes',
+          'Take short breaks if you feel tired'
+        ];
+      case 'Moderate':
+        return [
+          'Drink water every 20–30 minutes',
+          'Work in shade whenever possible',
+          'Take short rest breaks',
+          'Avoid very heavy work in peak sun'
+        ];
+      case 'High':
+        return [
+          'Avoid heavy work between 12 PM – 4 PM',
+          'Drink water frequently and use ORS if needed',
+          'Rest in shade every 30–45 minutes',
+          'Watch for dizziness, headache, or nausea'
+        ];
+      case 'Very High':
+        return [
+          'Do only urgent outdoor work',
+          'Stay in shade as much as possible',
+          'Drink water very frequently',
+          'Move to a cooling center if you feel unwell'
+        ];
+      case 'Extreme':
+        return [
+          'Stop outdoor work if possible',
+          'Go to the nearest cooling center',
+          'Drink water / ORS immediately',
+          'Seek medical help if dizzy, confused, or vomiting'
+        ];
+      default:
+        return [
+          'Drink water every 20–30 minutes',
+          'Work in shade whenever possible',
+          'Avoid heavy work between 12 PM – 4 PM',
+          'Wear light-colored, loose clothing'
+        ];
     }
   };
 
@@ -213,68 +261,64 @@ function UserDashboard() {
           </div>
 
           {reportMessage && (
-            <div className={`flex items-center gap-2 p-3 rounded-2xl mb-4 text-sm ${reportMessage.includes('success') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
-              }`}>
+            <div className={`flex items-center gap-2 p-3 rounded-2xl mb-4 text-sm ${
+              reportMessage.includes('success')
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}>
               <span>{reportMessage.includes('success') ? '✅' : '⚠️'}</span>
               <span>{reportMessage}</span>
             </div>
           )}
 
-         {showReportForm && (
-  <form onSubmit={handleReportSubmit} className="space-y-3 mb-6 bg-orange-50/70 p-5 rounded-2xl border border-orange-100">
-    
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Area / Locality *
-      </label>
-      <input
-        type="text"
-        name="location"
-        value={reportData.location}
-        onChange={handleReportChange}
-        required
-        placeholder="e.g. Makarpura, Manjalpur, Gotri"
-        className={inputClass}
-      />
-    </div>
+          {showReportForm && (
+            <form onSubmit={handleReportSubmit} className="space-y-3 mb-6 bg-orange-50/70 p-5 rounded-2xl border border-orange-100">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Area / Locality *</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={reportData.location}
+                  onChange={handleReportChange}
+                  required
+                  placeholder="e.g. Makarpura, Manjalpur, Gotri"
+                  className={inputClass}
+                />
+              </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        City *
-      </label>
-      <input
-        type="text"
-        name="city"
-        value={reportData.city}
-        onChange={handleReportChange}
-        required
-        placeholder="e.g. Vadodara"
-        className={inputClass}
-      />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={reportData.city}
+                  onChange={handleReportChange}
+                  required
+                  placeholder="e.g. Vadodara"
+                  className={inputClass}
+                />
+              </div>
 
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Description (optional)
-      </label>
-      <textarea
-        name="description"
-        value={reportData.description}
-        onChange={handleReportChange}
-        rows="2"
-        placeholder="e.g. No shade near factory gate, very high heat"
-        className={inputClass + ' resize-none'}
-      />
-    </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <textarea
+                  name="description"
+                  value={reportData.description}
+                  onChange={handleReportChange}
+                  rows="2"
+                  placeholder="e.g. No shade near factory gate, very high heat"
+                  className={inputClass + ' resize-none'}
+                />
+              </div>
 
-    <button
-      type="submit"
-      className="bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-2.5 px-6 rounded-2xl transition-all duration-200 hover:scale-[1.02]"
-    >
-      🚨 Submit Report
-    </button>
-  </form>
-)}
+              <button
+                type="submit"
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold text-sm py-2.5 px-6 rounded-2xl transition-all duration-200 hover:scale-[1.02]"
+              >
+                🚨 Submit Report
+              </button>
+            </form>
+          )}
 
           <div>
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Recent Reports</h4>
@@ -291,10 +335,11 @@ function UserDashboard() {
                       <p className="font-semibold text-gray-800 text-sm">📍 {spot.location}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{spot.city}</p>
                     </div>
-                    <span className={`text-xs px-3 py-1.5 rounded-full font-semibold ${spot.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                        spot.status === 'Verified' ? 'bg-blue-100 text-blue-700' :
-                          'bg-green-100 text-green-700'
-                      }`}>
+                    <span className={`text-xs px-3 py-1.5 rounded-full font-semibold ${
+                      spot.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                      spot.status === 'Verified' ? 'bg-blue-100 text-blue-700' :
+                      'bg-green-100 text-green-700'
+                    }`}>
                       {spot.status}
                     </span>
                   </div>
@@ -316,7 +361,7 @@ function UserDashboard() {
           ) : (
             <>
               <div className="mb-5 rounded-2xl overflow-hidden border border-orange-100">
-              <MapView centers={centers} city={user.location} />
+                <MapView centers={centers} city={user.location} />
               </div>
               <div className="space-y-3">
                 {centers.map((center) => (
@@ -339,20 +384,28 @@ function UserDashboard() {
           )}
         </div>
 
-        {/* Safety Tips */}
-        <div className="rounded-3xl p-6 sm:p-7 border border-blue-100 shadow-md"
-          style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' }}>
-          <h3 className="text-lg font-bold text-blue-900 mb-4">🛡️ Safety Tips</h3>
-          <ul className="grid sm:grid-cols-2 gap-3">
-            {[
-              { icon: '💧', tip: 'Drink water every 20–30 minutes' },
-              { icon: '🌿', tip: 'Work in shade whenever possible' },
-              { icon: '⏰', tip: 'Avoid heavy work between 12 PM – 4 PM' },
-              { icon: '👕', tip: 'Wear light-colored, loose clothing' },
-            ].map((item) => (
-              <li key={item.tip} className="flex items-center gap-3 bg-white/70 rounded-2xl px-4 py-3 text-sm text-blue-900 font-medium">
-                <span className="text-lg">{item.icon}</span>
-                {item.tip}
+        {/* Dynamic Safety Tips */}
+        <div
+          className="rounded-3xl p-6 sm:p-7 border border-blue-100 shadow-md"
+          style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)' }}
+        >
+          <h3 className="text-lg font-bold text-blue-900 mb-2">
+            🛡️ Safety Tips
+            {heatData?.riskLevel && (
+              <span className="ml-2 text-sm font-medium text-blue-600">
+                ({heatData.riskLevel} Risk)
+              </span>
+            )}
+          </h3>
+
+          <ul className="grid sm:grid-cols-2 gap-3 mt-4">
+            {getSafetyTips(heatData?.riskLevel).map((tip, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-3 bg-white/70 rounded-2xl px-4 py-3 text-sm text-blue-900 font-medium"
+              >
+                <span className="text-blue-500 mt-0.5">•</span>
+                <span>{tip}</span>
               </li>
             ))}
           </ul>
@@ -360,13 +413,15 @@ function UserDashboard() {
 
         {/* Manager Tools */}
         {user.role === 'manager' && (
-          <div className="rounded-3xl p-6 sm:p-7 border border-purple-100 shadow-md"
-            style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)' }}>
+          <div
+            className="rounded-3xl p-6 sm:p-7 border border-purple-100 shadow-md"
+            style={{ background: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)' }}
+          >
             <h3 className="text-lg font-bold text-purple-900 mb-3">👷 Manager Tools</h3>
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="bg-white/70 rounded-2xl p-4">
                 <p className="text-xs text-purple-500 font-semibold uppercase tracking-wider mb-1">Suggested Safe Hours</p>
-                <p className="text-purple-900 font-bold">6 AM – 11 AM &amp; 4 PM – 7 PM</p>
+                <p className="text-purple-900 font-bold">6 AM – 11 AM & 4 PM – 7 PM</p>
               </div>
               <div className="bg-white/70 rounded-2xl p-4">
                 <p className="text-xs text-purple-500 font-semibold uppercase tracking-wider mb-1">Reminder</p>
