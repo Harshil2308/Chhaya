@@ -94,8 +94,7 @@ function UserDashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 40%, #fef3c7 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
           <p className="text-orange-600 font-medium text-sm">Loading your dashboard...</p>
@@ -111,7 +110,7 @@ function UserDashboard() {
     'bg-gray-50 focus:bg-white focus:border-orange-400 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-200';
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #fff7ed 0%, #fed7aa 30%, #fef3c7 100%)' }}>
+    <div className="min-h-screen">
       <Navbar user={user} />
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">

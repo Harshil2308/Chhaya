@@ -109,8 +109,7 @@ function AdminDashboard() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center"
-        style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 40%, #fef3c7 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-4 border-orange-300 border-t-orange-500 rounded-full animate-spin" />
           <p className="text-orange-600 font-medium text-sm">Loading admin panel...</p>
@@ -130,7 +129,7 @@ function AdminDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg, #fff7ed 0%, #fed7aa 30%, #fef3c7 100%)' }}>
+    <div className="min-h-screen">
 
       {/* Admin Navbar */}
       <nav className="sticky top-0 z-50 bg-white border-b border-orange-100 shadow-sm">
