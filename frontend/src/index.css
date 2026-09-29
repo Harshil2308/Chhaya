@@ -124,3 +124,133 @@ body {
 
 /* ── Section label ── */
 .section-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af; margin-bottom: 0.75rem; }
+
+/* ════════════════════════════════════════
+   SUN PANEL ANIMATIONS
+════════════════════════════════════════ */
+
+/* Slow rotation for rays ring */
+@keyframes sun-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Opposite slow rotation for inner rays */
+@keyframes sun-rotate-reverse {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(-360deg); }
+}
+
+/* Pulsing glow around sun core */
+@keyframes sun-pulse {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.08); opacity: 0.85; }
+}
+
+/* Outer glow ring breathing */
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.18; transform: scale(1); }
+  50%       { opacity: 0.35; transform: scale(1.12); }
+}
+
+/* Heat wave rise */
+@keyframes heat-rise {
+  0%   { transform: translateY(0)   scaleX(1);    opacity: 0.7; }
+  50%  { transform: translateY(-22px) scaleX(1.08); opacity: 0.4; }
+  100% { transform: translateY(-44px) scaleX(0.9);  opacity: 0; }
+}
+
+/* Floating gentle bob */
+@keyframes float-bob {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-10px); }
+}
+
+/* Shimmer text/tagline fade */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Particle drift */
+@keyframes particle-drift {
+  0%   { transform: translateY(0)   translateX(0)   scale(1);    opacity: 0.6; }
+  50%  { transform: translateY(-30px) translateX(8px) scale(1.2); opacity: 0.3; }
+  100% { transform: translateY(-60px) translateX(-4px) scale(0.7); opacity: 0; }
+}
+
+/* Sun panel layout */
+.sun-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(160deg, #ff9a3c 0%, #e06010 40%, #b84a00 100%);
+}
+
+.sun-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 45%, rgba(255,220,100,0.35) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Rays outer ring */
+.sun-rays-outer {
+  animation: sun-rotate 18s linear infinite;
+  transform-origin: center;
+}
+
+/* Rays inner ring (counter-rotate) */
+.sun-rays-inner {
+  animation: sun-rotate-reverse 12s linear infinite;
+  transform-origin: center;
+}
+
+/* Core circle */
+.sun-core {
+  animation: sun-pulse 3s ease-in-out infinite;
+  transform-origin: center;
+}
+
+/* Glow rings */
+.sun-glow-1 {
+  animation: glow-breathe 3s ease-in-out infinite;
+}
+.sun-glow-2 {
+  animation: glow-breathe 3s ease-in-out infinite 1s;
+}
+.sun-glow-3 {
+  animation: glow-breathe 3s ease-in-out infinite 2s;
+}
+
+/* Floating sun wrapper */
+.sun-float {
+  animation: float-bob 5s ease-in-out infinite;
+}
+
+/* Heat wave bars */
+.heat-wave {
+  position: absolute;
+  bottom: 28%;
+  width: 3px;
+  border-radius: 99px;
+  background: rgba(255, 200, 80, 0.7);
+  animation: heat-rise 2.2s ease-in-out infinite;
+}
+
+/* Particles */
+.sun-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 220, 100, 0.55);
+  animation: particle-drift linear infinite;
+}
+
+/* Panel tagline */
+.sun-tagline {
+  animation: fade-up 0.8s ease both;
+}
