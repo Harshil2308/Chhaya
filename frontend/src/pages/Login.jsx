@@ -37,8 +37,7 @@ if (!phoneRegex.test(phone)) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #fed7aa 40%, #fef3c7 100%)' }}>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
 
       {/* Decorative blobs */}
       <div className="absolute top-[-80px] right-[-80px] w-72 h-72 rounded-full opacity-30"
