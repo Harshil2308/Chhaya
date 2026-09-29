@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
+
 * {
   box-sizing: border-box;
 }
@@ -7,31 +8,119 @@
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background-color: #fff7ed;
-  background-image: url('./assets/background.jpeg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
+  background: linear-gradient(150deg, #fde2b8 0%, #fde2b8 55%, #fbbf7a 100%);
   background-attachment: fixed;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: #111827;
 }
 
-/* Smooth scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #fff7ed;
-}
-::-webkit-scrollbar-thumb {
-  background: #fdba74;
-  border-radius: 3px;
-}
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #fde2b8; }
+::-webkit-scrollbar-thumb { background: #f9a44a; border-radius: 3px; }
 
-/* Focus ring override */
+/* ── Focus ring ── */
 *:focus-visible {
-  outline: 2px solid #f97316;
+  outline: 2px solid #e06010;
   outline-offset: 2px;
 }
+
+/* ── Shared card ── */
+.chhaya-card {
+  background: #ffffff;
+  border-radius: 1.5rem;
+  box-shadow: 0 4px 24px 0 rgba(249, 115, 22, 0.09), 0 1.5px 6px 0 rgba(0,0,0,0.05);
+  border: 1px solid rgba(249, 115, 22, 0.08);
+}
+
+/* ── Input ── */
+.chhaya-input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: #fde2b8;
+  border: 1.5px solid transparent;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+  font-family: inherit;
+}
+.chhaya-input::placeholder { color: #9ca3af; }
+.chhaya-input:focus {
+  border-color: #e06010;
+  box-shadow: 0 0 0 3px rgba(249,115,22,0.13);
+  background: #ffffff;
+}
+
+/* ── Primary button ── */
+.chhaya-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #e06010 0%, #c97d08 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border: none;
+  border-radius: 0.875rem;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(249,115,22,0.25);
+  transition: opacity 0.2s, box-shadow 0.2s, transform 0.15s;
+  font-family: inherit;
+}
+.chhaya-btn-primary:hover:not(:disabled) { opacity: 0.92; box-shadow: 0 4px 18px rgba(249,115,22,0.35); transform: translateY(-1px); }
+.chhaya-btn-primary:active:not(:disabled) { transform: scale(0.98); }
+.chhaya-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Danger button ── */
+.chhaya-btn-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  padding: 0.45rem 1rem;
+  background: #fef2f2;
+  color: #dc2626;
+  font-weight: 600;
+  font-size: 0.8rem;
+  border: 1.5px solid #fca5a5;
+  border-radius: 0.65rem;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s;
+  font-family: inherit;
+}
+.chhaya-btn-danger:hover { background: #dc2626; color: #ffffff; border-color: #dc2626; }
+
+/* ── Status badge ── */
+.badge {
+  display: inline-flex; align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+.badge-pending  { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+.badge-verified { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.badge-resolved { background: #dcfce7; color: #166534; border-color: #86efac; }
+
+/* ── Spinner ── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 1.1rem; height: 1.1rem;
+  border: 2.5px solid rgba(255,255,255,0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Alert ── */
+.alert { display: flex; align-items: center; gap: 0.6rem; padding: 0.75rem 1rem; border-radius: 0.875rem; font-size: 0.85rem; font-weight: 500; border: 1px solid transparent; }
+.alert-error   { background: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+.alert-success { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+
+/* ── Section label ── */
+.section-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af; margin-bottom: 0.75rem; }
