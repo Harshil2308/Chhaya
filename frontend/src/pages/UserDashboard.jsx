@@ -4,22 +4,23 @@ import API from '../services/api';
 import Navbar from '../components/Navbar';
 import MapView from '../components/MapView';
 
-/* ── Risk level config ── */
 const RISK_CONFIG = {
-  Low:      { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', label: 'Low Risk'      },
-  Moderate: { bg: '#fefce8', border: '#fde68a', textColor: '#854d0e', badgeBg: '#fef9c3', badgeText: '#713f12', dot: '#eab308', label: 'Moderate Risk' },
-  High:     { bg: '#fff7ed', border: '#fdba74', textColor: '#c2410c', badgeBg: '#ffedd5', badgeText: '#9a3412', dot: '#e06010', label: 'High Risk'     },
-  'Very High': { bg: '#fff1f2', border: '#fca5a5', textColor: '#b91c1c', badgeBg: '#fee2e2', badgeText: '#991b1b', dot: '#dc2626', label: 'Very High Risk' },
-  Extreme:  { bg: '#fff1f2', border: '#f87171', textColor: '#991b1b', badgeBg: '#fecaca', badgeText: '#7f1d1d', dot: '#dc2626', label: 'Extreme Risk'  },
+  Low:         { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
+  Moderate:    { bg: '#fefce8', border: '#fde68a', textColor: '#854d0e', badgeBg: '#fef9c3', badgeText: '#713f12', dot: '#eab308', barColor: '#eab308' },
+  High:        { bg: '#fff7ed', border: '#fdba74', textColor: '#c2410c', badgeBg: '#ffedd5', badgeText: '#9a3412', dot: '#e06010', barColor: '#e06010' },
+  'Very High': { bg: '#fff1f2', border: '#fca5a5', textColor: '#b91c1c', badgeBg: '#fee2e2', badgeText: '#991b1b', dot: '#dc2626', barColor: '#dc2626' },
+  Extreme:     { bg: '#fff1f2', border: '#f87171', textColor: '#991b1b', badgeBg: '#fecaca', badgeText: '#7f1d1d', dot: '#dc2626', barColor: '#dc2626' },
 };
 
+const RISK_BAR_PCT = { Low: '20%', Moderate: '45%', High: '65%', 'Very High': '82%', Extreme: '100%' };
+
 const SAFETY_TIPS = [
-  { icon: '💧', tip: 'Drink water every 20–30 minutes, even if not thirsty' },
-  { icon: '🌿', tip: 'Rest in shade whenever possible during your shift' },
-  { icon: '⏰', tip: 'Avoid heavy physical work between 12 PM and 4 PM' },
-  { icon: '👕', tip: 'Wear light-colored, loose-fitting clothing' },
-  { icon: '🩺', tip: 'Watch for heat exhaustion signs — dizziness, nausea, cramps' },
-  { icon: '📞', tip: 'Report heat emergencies to your supervisor immediately' },
+  { icon: '💧', tip: 'Drink water every 20–30 minutes' },
+  { icon: '🌿', tip: 'Rest in shade whenever possible' },
+  { icon: '⏰', tip: 'Avoid heavy work between 12–4 PM' },
+  { icon: '👕', tip: 'Wear light-colored, loose clothing' },
+  { icon: '🩺', tip: 'Watch for dizziness, cramps, nausea' },
+  { icon: '📞', tip: 'Report emergencies to your supervisor' },
 ];
 
 function UserDashboard() {
@@ -37,233 +38,294 @@ function UserDashboard() {
     const storedUser = localStorage.getItem('user');
     const token      = localStorage.getItem('token');
     if (!token || !storedUser) { navigate('/login'); return; }
-
     const parsedUser = JSON.parse(storedUser);
     setUser(parsedUser);
     const city = parsedUser.location || 'Ahmedabad';
     setReportData(prev => ({ ...prev, city }));
-
     fetchHeatData(city);
     fetchCoolingCenters(city);
     fetchHotspots(city);
   }, [navigate]);
 
-  const fetchHeatData = async (city) => {
-    try   { const res = await API.get(`/alerts?city=${city}`); setHeatData(res.data); }
-    catch { setHeatData(null); }
-    finally { setLoading(false); }
-  };
-  const fetchCoolingCenters = async (city) => {
-    try   { const res = await API.get(`/cooling-centers?city=${city}`); setCenters(res.data); }
-    catch { setCenters([]); }
-  };
-  const fetchHotspots = async (city) => {
-    try   { const res = await API.get(`/hotspots?city=${city}`); setHotspots(res.data); }
-    catch { setHotspots([]); }
-  };
+  const fetchHeatData      = async (city) => { try { const r = await API.get(`/alerts?city=${city}`);          setHeatData(r.data);  } catch { setHeatData(null); } finally { setLoading(false); } };
+  const fetchCoolingCenters = async (city) => { try { const r = await API.get(`/cooling-centers?city=${city}`); setCenters(r.data);   } catch { setCenters([]); } };
+  const fetchHotspots      = async (city) => { try { const r = await API.get(`/hotspots?city=${city}`);         setHotspots(r.data);  } catch { setHotspots([]); } };
 
   const handleReportChange = e => setReportData({ ...reportData, [e.target.name]: e.target.value });
-
   const handleReportSubmit = async (e) => {
-    e.preventDefault();
-    setReportMessage('');
+    e.preventDefault(); setReportMessage('');
     try {
       await API.post('/hotspots', reportData);
       setReportMessage('success');
       setReportData({ location: '', city: user.location || 'Ahmedabad', description: '' });
       setShowReportForm(false);
       fetchHotspots(user.location || 'Ahmedabad');
-    } catch (error) {
-      setReportMessage(error.response?.data?.message || 'Failed to report hotspot');
-    }
+    } catch (err) { setReportMessage(err.response?.data?.message || 'Failed to report hotspot'); }
   };
 
-  const inputClass = 'chhaya-input';
-
-  /* ── Loading screen ── */
   if (!user) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-        <p className="text-orange-600 font-medium text-sm">Loading your dashboard...</p>
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 border-4 border-orange-100 rounded-full" />
+          <div className="absolute inset-0 border-4 border-t-orange-500 rounded-full animate-spin" />
+        </div>
+        <p className="text-sm font-semibold" style={{ color: '#e06010' }}>Loading your dashboard...</p>
       </div>
     </div>
   );
 
-  const riskCfg = heatData ? (RISK_CONFIG[heatData.riskLevel] || RISK_CONFIG['Low']) : null;
+  const riskCfg     = heatData ? (RISK_CONFIG[heatData.riskLevel] || RISK_CONFIG['Low']) : null;
+  const riskBarPct  = heatData ? (RISK_BAR_PCT[heatData.riskLevel] || '20%') : '0%';
 
   return (
     <div className="min-h-screen">
       <Navbar user={user} />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-7 space-y-5">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7">
 
-        {/* ── Welcome card ── */}
-        <div className="chhaya-card p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <p className="section-label">Dashboard</p>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
-                Welcome back, <span style={{ color: '#e06010' }}>{user.name}</span> 👋
-              </h2>
-              <p className="text-gray-500 text-sm mt-1">Stay safe and hydrated today.</p>
+        {/* ══ ROW 1: Welcome + Quick stats ══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+
+          {/* Welcome card — takes 2 cols */}
+          <div className="lg:col-span-2 chhaya-card card-lift p-6 dash-slide-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="section-label">Your Dashboard</p>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
+                  Hello, <span style={{ color: '#e06010' }}>{user.name}</span> 👋
+                </h2>
+                <p className="text-gray-500 text-sm mt-1.5">Stay safe and stay hydrated today.</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>👤 {user.role}</span>
+                  {user.occupation && <span className="badge" style={{ background: '#fef9c3', color: '#713f12', borderColor: '#fde68a' }}>🛠️ {user.occupation}</span>}
+                  {user.location   && <span className="badge" style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}>📍 {user.location}</span>}
+                </div>
+              </div>
+              {/* Time of day greeting visual */}
+              <div className="shrink-0 w-24 h-24 rounded-3xl flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg,#fff3e0,#fde2b8)' }}>
+                <span className="text-5xl select-none">
+                  {new Date().getHours() < 12 ? '🌅' : new Date().getHours() < 17 ? '☀️' : '🌇'}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>
-                👤 {user.role}
-              </span>
-              {user.occupation && (
-                <span className="badge" style={{ background: '#fef9c3', color: '#713f12', borderColor: '#fde68a' }}>
-                  🛠️ {user.occupation}
-                </span>
-              )}
-              {user.location && (
-                <span className="badge" style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}>
-                  📍 {user.location}
-                </span>
-              )}
+          </div>
+
+          {/* Quick stat: Centers nearby */}
+          <div className="chhaya-card card-lift p-6 flex flex-col justify-between dash-slide-right delay-100">
+            <div>
+              <p className="section-label">Cooling Centers</p>
+              <p className="text-4xl font-extrabold stat-pop delay-300" style={{ color: '#e06010' }}>{centers.length}</p>
+              <p className="text-sm text-gray-500 mt-1">Near {user.location || 'your city'}</p>
+            </div>
+            <div className="flex items-center gap-2 mt-4 text-xs text-green-600 font-semibold bg-green-50 px-3 py-2 rounded-xl border border-green-100 w-fit">
+              🏢 Available now
             </div>
           </div>
         </div>
 
-        {/* ── Live Heat Risk card ── */}
-        {loading ? (
-          <div className="chhaya-card p-8 text-center">
-            <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-gray-400 text-sm font-medium">Fetching live heat data...</p>
-          </div>
-        ) : heatData && riskCfg ? (
-          <div className="rounded-3xl p-6 sm:p-8 transition-all duration-300 border-2"
-            style={{ background: riskCfg.bg, borderColor: riskCfg.border, boxShadow: `0 4px 20px 0 ${riskCfg.dot}22` }}>
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-5">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="section-label" style={{ color: riskCfg.textColor, opacity: 0.7 }}>Live Heat Risk</span>
-                  <span className="badge" style={{ background: riskCfg.badgeBg, color: riskCfg.badgeText, borderColor: riskCfg.border }}>
-                    {heatData.city}
-                  </span>
-                </div>
-                <h3 className="text-4xl sm:text-5xl font-extrabold leading-none mb-3" style={{ color: riskCfg.textColor }}>
-                  {heatData.riskLevel}
-                </h3>
-                <p className="text-sm leading-relaxed max-w-sm" style={{ color: riskCfg.textColor, opacity: 0.9 }}>
-                  {heatData.advice}
-                </p>
+        {/* ══ ROW 2: Heat Risk (wide) + Hotspot count ══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
 
-                {/* Stats pills */}
-                <div className="mt-5 flex flex-wrap gap-3">
-                  {[
-                    { icon: '🌡️', label: 'Temperature', value: `${heatData.temperature}°C` },
-                    { icon: '💧', label: 'Humidity',    value: `${heatData.humidity}%`     },
-                    { icon: '🔥', label: 'Heat Index',  value: `${heatData.heatIndex}°C`   },
-                  ].map(stat => (
-                    <div key={stat.label} className="flex items-center gap-2 bg-white/70 rounded-2xl px-4 py-2 backdrop-blur-sm">
-                      <span className="text-xl">{stat.icon}</span>
-                      <div>
-                        <p className="text-xs text-gray-500">{stat.label}</p>
-                        <p className="text-sm font-bold text-gray-800">{stat.value}</p>
-                      </div>
+          {/* Live Heat Risk — 2 cols */}
+          <div className="lg:col-span-2 dash-fade-up delay-150">
+            {loading ? (
+              <div className="chhaya-card p-8">
+                <div className="space-y-3">
+                  <div className="shimmer-line h-5 w-1/3" />
+                  <div className="shimmer-line h-10 w-1/2" />
+                  <div className="shimmer-line h-4 w-2/3" />
+                  <div className="flex gap-3 mt-4">
+                    {[1,2,3].map(i => <div key={i} className="shimmer-line h-12 w-24 rounded-2xl" />)}
+                  </div>
+                </div>
+              </div>
+            ) : heatData && riskCfg ? (
+              <div className="rounded-3xl p-6 sm:p-8 border-2 overflow-hidden relative card-lift"
+                style={{ background: riskCfg.bg, borderColor: riskCfg.border, boxShadow: `0 6px 28px ${riskCfg.dot}28` }}>
+
+                {/* Background watermark */}
+                <div className="absolute -right-8 -top-8 text-[120px] opacity-[0.06] select-none pointer-events-none leading-none">
+                  {heatData.riskLevel === 'Extreme' ? '🔥' : heatData.riskLevel === 'Low' ? '🌿' : '☀️'}
+                </div>
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="pulse-ring-anim w-3 h-3 rounded-full" style={{ background: riskCfg.dot }} />
+                    <span className="section-label" style={{ color: riskCfg.textColor, opacity: 0.7, marginBottom: 0 }}>Live Heat Risk</span>
+                    <span className="badge" style={{ background: riskCfg.badgeBg, color: riskCfg.badgeText, borderColor: riskCfg.border }}>{heatData.city}</span>
+                  </div>
+
+                  <h3 className="text-4xl sm:text-5xl font-extrabold leading-none mb-2" style={{ color: riskCfg.textColor }}>
+                    {heatData.riskLevel}
+                  </h3>
+                  <p className="text-sm leading-relaxed max-w-md mb-5 opacity-90" style={{ color: riskCfg.textColor }}>
+                    {heatData.advice}
+                  </p>
+
+                  {/* Risk level bar */}
+                  <div className="mb-5">
+                    <div className="flex justify-between text-xs mb-1.5 font-semibold opacity-70" style={{ color: riskCfg.textColor }}>
+                      <span>Low</span><span>Moderate</span><span>High</span><span>Extreme</span>
                     </div>
-                  ))}
+                    <div className="h-2.5 bg-white/40 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full" style={{
+                        width: riskBarPct,
+                        background: riskCfg.barColor,
+                        animation: 'bar-fill 1s ease 0.4s both',
+                        '--fill-pct': riskBarPct,
+                      }} />
+                    </div>
+                  </div>
+
+                  {/* Stat pills */}
+                  <div className="flex flex-wrap gap-3">
+                    {[
+                      { icon: '🌡️', label: 'Temperature', value: `${heatData.temperature}°C` },
+                      { icon: '💧', label: 'Humidity',    value: `${heatData.humidity}%`     },
+                      { icon: '🔥', label: 'Heat Index',  value: `${heatData.heatIndex}°C`   },
+                    ].map((s, i) => (
+                      <div key={s.label} className={`flex items-center gap-2.5 bg-white/65 rounded-2xl px-4 py-2.5 backdrop-blur-sm dash-fade-up delay-${(i+3)*100}`}>
+                        <span className="text-xl">{s.icon}</span>
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{s.label}</p>
+                          <p className="text-base font-extrabold text-gray-800">{s.value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-
-              {/* Big dot indicator */}
-              <div className="flex items-center justify-center w-20 h-20 rounded-full shadow-lg shrink-0"
-                style={{ background: riskCfg.dot, opacity: 0.18 }}>
-                <div className="w-12 h-12 rounded-full" style={{ background: riskCfg.dot }} />
+            ) : (
+              <div className="chhaya-card p-6 text-center">
+                <span className="text-4xl">🌐</span>
+                <p className="text-gray-400 mt-3 text-sm">Unable to fetch heat data. Check your location settings.</p>
               </div>
+            )}
+          </div>
+
+          {/* Hotspot count stat */}
+          <div className="flex flex-col gap-5 dash-slide-right delay-200">
+            <div className="chhaya-card card-lift p-6 flex-1 flex flex-col justify-between">
+              <div>
+                <p className="section-label">Hotspots Nearby</p>
+                <p className="text-4xl font-extrabold stat-pop delay-400 text-red-500">{hotspots.length}</p>
+                <p className="text-sm text-gray-500 mt-1">Reported in your area</p>
+              </div>
+              <button
+                onClick={() => setShowReportForm(v => !v)}
+                className="mt-4 text-sm font-semibold px-4 py-2.5 rounded-xl w-full transition-all duration-200 border"
+                style={!showReportForm
+                  ? { background: 'linear-gradient(135deg,#e06010,#c97d08)', color: '#fff', borderColor: 'transparent' }
+                  : { background: '#f9fafb', color: '#4b5563', borderColor: '#e5e7eb' }}
+              >
+                {showReportForm ? '✕ Cancel Report' : '🚨 Report Hotspot'}
+              </button>
+            </div>
+
+            {/* Current time */}
+            <div className="chhaya-card card-lift p-5 text-center">
+              <p className="section-label">Local Time</p>
+              <p className="text-2xl font-extrabold text-gray-800">
+                {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short' })}</p>
             </div>
           </div>
-        ) : (
-          <div className="chhaya-card p-6 text-center">
-            <span className="text-4xl">🌐</span>
-            <p className="text-gray-400 mt-3 text-sm">Unable to fetch heat data. Please check your location settings.</p>
+        </div>
+
+        {/* ══ ROW 3: Report form (conditional) ══ */}
+        {showReportForm && (
+          <div className="chhaya-card p-6 sm:p-7 mb-5 dash-fade-up border-l-4" style={{ borderLeftColor: '#e06010' }}>
+            <h3 className="text-base font-bold text-gray-900 mb-4">🚨 Report a Heat Hotspot</h3>
+            {reportMessage && (
+              <div className={`alert mb-4 ${reportMessage === 'success' ? 'alert-success' : 'alert-error'}`}>
+                {reportMessage === 'success' ? '✅ Hotspot reported successfully!' : `⚠️ ${reportMessage}`}
+              </div>
+            )}
+            <form onSubmit={handleReportSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Area / Locality *</label>
+                <input type="text" name="location" value={reportData.location} onChange={handleReportChange}
+                  required placeholder="e.g. Makarpura, Manjalpur" className="chhaya-input" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">City *</label>
+                <input type="text" name="city" value={reportData.city} onChange={handleReportChange}
+                  required placeholder="e.g. Vadodara" className="chhaya-input" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description (optional)</label>
+                <textarea name="description" value={reportData.description} onChange={handleReportChange}
+                  rows="2" placeholder="e.g. No shade near factory gate, very high heat"
+                  className="chhaya-input resize-none" />
+              </div>
+              <div className="sm:col-span-2">
+                <button type="submit" className="px-6 py-2.5 rounded-xl text-white font-bold text-sm bg-red-500 hover:bg-red-600 transition-colors border-0 cursor-pointer">
+                  🚨 Submit Report
+                </button>
+              </div>
+            </form>
           </div>
         )}
 
-        {/* ── Report Hotspot card ── */}
-        <div className="chhaya-card p-6 sm:p-7">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900">🚨 Report Extreme Heat</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Alert others about nearby heat hotspots</p>
-            </div>
-            <button
-              onClick={() => setShowReportForm(!showReportForm)}
-              className={`text-sm font-semibold px-4 py-2 rounded-xl border transition-all duration-200 ${
-                showReportForm
-                  ? 'border-gray-200 text-gray-600 bg-gray-50 hover:bg-gray-100'
-                  : 'text-white border-transparent hover:opacity-90'
-              }`}
-              style={!showReportForm ? { background: 'linear-gradient(135deg,#e06010,#c97d08)' } : {}}
-            >
-              {showReportForm ? '✕ Cancel' : '+ Report Hotspot'}
-            </button>
-          </div>
-
-          {reportMessage && (
-            <div className={`alert mb-4 ${reportMessage === 'success' ? 'alert-success' : 'alert-error'}`}>
-              {reportMessage === 'success' ? '✅ Hotspot reported successfully!' : `⚠️ ${reportMessage}`}
-            </div>
-          )}
-
-          {showReportForm && (
-            <form onSubmit={handleReportSubmit} className="space-y-3 mb-5 bg-orange-50 p-5 rounded-2xl border border-orange-100">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Area / Locality *</label>
-                <input type="text" name="location" value={reportData.location} onChange={handleReportChange}
-                  required placeholder="e.g. Makarpura, Manjalpur" className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">City *</label>
-                <input type="text" name="city" value={reportData.city} onChange={handleReportChange}
-                  required placeholder="e.g. Vadodara" className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Description (optional)</label>
-                <textarea name="description" value={reportData.description} onChange={handleReportChange}
-                  rows="2" placeholder="e.g. No shade near factory gate, very high heat"
-                  className={`${inputClass} resize-none`} />
-              </div>
-              <button type="submit"
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-semibold text-sm
-                           bg-red-500 hover:bg-red-600 transition-colors duration-200 border-0 cursor-pointer">
-                🚨 Submit Report
-              </button>
-            </form>
-          )}
+        {/* ══ ROW 4: Hotspots list + Safety Tips (side by side) ══ */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
 
           {/* Recent hotspots */}
-          <div>
-            <p className="section-label">Recent Reports</p>
+          <div className="chhaya-card card-lift p-6 dash-fade-up delay-300">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900">🔴 Recent Hotspot Reports</h3>
+              <span className="badge badge-pending">{hotspots.length} reports</span>
+            </div>
             {hotspots.length === 0 ? (
-              <div className="text-center py-6">
-                <span className="text-3xl">📭</span>
-                <p className="text-gray-400 text-sm mt-2">No hotspots reported in your area yet.</p>
+              <div className="text-center py-8">
+                <span className="text-4xl">📭</span>
+                <p className="text-gray-400 text-sm mt-2">No reports in your area yet.</p>
               </div>
             ) : (
               <div className="space-y-2.5">
-                {hotspots.slice(0, 4).map(spot => (
-                  <div key={spot._id} className="flex justify-between items-center bg-red-50 border border-red-100 rounded-2xl p-4 hover:bg-red-100/60 transition-colors duration-200">
+                {hotspots.slice(0, 5).map((spot, i) => (
+                  <div key={spot._id}
+                    className={`flex justify-between items-center rounded-2xl p-3.5 border transition-all duration-200 hover:shadow-sm tip-item`}
+                    style={{ background: '#fff5f5', borderColor: '#fecaca', animationDelay: `${i * 0.08}s` }}>
                     <div>
                       <p className="font-semibold text-gray-800 text-sm">📍 {spot.location}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{spot.city}</p>
+                      <p className="text-xs text-gray-400">{spot.city}</p>
                     </div>
-                    <span className={`badge ${
-                      spot.status === 'Pending'  ? 'badge-pending'  :
-                      spot.status === 'Verified' ? 'badge-verified' : 'badge-resolved'
-                    }`}>{spot.status}</span>
+                    <span className={`badge ${spot.status === 'Pending' ? 'badge-pending' : spot.status === 'Verified' ? 'badge-verified' : 'badge-resolved'}`}>
+                      {spot.status}
+                    </span>
                   </div>
                 ))}
               </div>
             )}
           </div>
+
+          {/* Safety Tips */}
+          <div className="rounded-3xl p-6 card-lift dash-fade-up delay-350 border border-blue-100"
+            style={{ background: 'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)', boxShadow: '0 4px 18px #2563eb12' }}>
+            <h3 className="font-bold text-blue-900 mb-4">🛡️ Safety Tips</h3>
+            <ul className="space-y-2.5">
+              {SAFETY_TIPS.map((item, i) => (
+                <li key={item.tip}
+                  className="tip-item flex items-center gap-3 bg-white/65 rounded-xl px-3.5 py-2.5 text-sm text-blue-900 font-medium backdrop-blur-sm"
+                  style={{ animationDelay: `${0.35 + i * 0.07}s` }}>
+                  <span className="text-lg shrink-0">{item.icon}</span>
+                  <span>{item.tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        {/* ── Cooling Centers card ── */}
-        <div className="chhaya-card p-6 sm:p-7">
-          <h3 className="text-lg font-bold text-gray-900 mb-5">🌳 Nearby Cooling Centers</h3>
+        {/* ══ ROW 5: Cooling Centers (full width) ══ */}
+        <div className="chhaya-card card-lift p-6 sm:p-7 mb-5 dash-fade-up delay-400">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-bold text-gray-900 text-lg">🌳 Nearby Cooling Centers</h3>
+            <span className="badge badge-resolved">{centers.length} available</span>
+          </div>
           {centers.length === 0 ? (
             <div className="text-center py-8">
               <span className="text-4xl">🏢</span>
@@ -271,20 +333,22 @@ function UserDashboard() {
             </div>
           ) : (
             <>
-              <div className="mb-5 rounded-2xl overflow-hidden border border-orange-100">
+              <div className="mb-5 rounded-2xl overflow-hidden border border-orange-100 shadow-sm">
                 <MapView centers={centers} city={user.location} />
               </div>
-              <div className="space-y-3">
-                {centers.map(center => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {centers.map((center, i) => (
                   <div key={center._id}
-                    className="flex justify-between items-start border border-gray-100 rounded-2xl p-4
-                               hover:bg-orange-50/60 hover:border-orange-200 hover:shadow-sm transition-all duration-200">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-800 text-sm">{center.name}</h4>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{center.address}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{center.type} · {center.facilities}</p>
+                    className={`border border-gray-100 rounded-2xl p-4 hover:bg-orange-50/60 hover:border-orange-200 hover:shadow-sm transition-all duration-200 tip-item`}
+                    style={{ animationDelay: `${0.4 + i * 0.06}s` }}>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-gray-800 text-sm">{center.name}</h4>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{center.address}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{center.type} · {center.facilities}</p>
+                      </div>
+                      <span className="shrink-0 badge badge-resolved">{center.city}</span>
                     </div>
-                    <span className="ml-3 shrink-0 badge badge-resolved">{center.city}</span>
                   </div>
                 ))}
               </div>
@@ -292,34 +356,23 @@ function UserDashboard() {
           )}
         </div>
 
-        {/* ── Safety Tips card ── */}
-        <div className="rounded-3xl p-6 sm:p-7 border border-blue-100"
-          style={{ background: 'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)', boxShadow: '0 4px 18px 0 #2563eb14' }}>
-          <h3 className="text-lg font-bold text-blue-900 mb-4">🛡️ Safety Tips for Outdoor Workers</h3>
-          <ul className="grid sm:grid-cols-2 gap-3">
-            {SAFETY_TIPS.map(item => (
-              <li key={item.tip} className="flex items-start gap-3 bg-white/70 rounded-2xl px-4 py-3 text-sm text-blue-900 font-medium backdrop-blur-sm">
-                <span className="text-lg mt-0.5">{item.icon}</span>
-                {item.tip}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* ── Manager Tools (role-gated) ── */}
+        {/* ══ Manager Tools (role-gated) ══ */}
         {user.role === 'manager' && (
-          <div className="rounded-3xl p-6 sm:p-7 border border-purple-100"
+          <div className="rounded-3xl p-6 sm:p-7 border border-purple-100 dash-fade-up delay-500 card-lift"
             style={{ background: 'linear-gradient(135deg,#faf5ff 0%,#ede9fe 100%)' }}>
-            <h3 className="text-lg font-bold text-purple-900 mb-3">👷 Manager Tools</h3>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="bg-white/70 rounded-2xl p-4">
-                <p className="text-xs text-purple-500 font-semibold uppercase tracking-wider mb-1">Suggested Safe Hours</p>
-                <p className="text-purple-900 font-bold">6 AM – 11 AM &amp; 4 PM – 7 PM</p>
-              </div>
-              <div className="bg-white/70 rounded-2xl p-4">
-                <p className="text-xs text-purple-500 font-semibold uppercase tracking-wider mb-1">Reminder</p>
-                <p className="text-purple-900 text-sm">Ensure workers have water and shade throughout the day.</p>
-              </div>
+            <h3 className="font-bold text-purple-900 text-lg mb-4">👷 Manager Tools</h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { label: 'Safe Morning Hours', value: '6 AM – 11 AM', icon: '🌅' },
+                { label: 'Safe Evening Hours', value: '4 PM – 7 PM',  icon: '🌇' },
+                { label: 'Key Reminder',       value: 'Ensure water & shade for all workers', icon: '💡' },
+              ].map(item => (
+                <div key={item.label} className="bg-white/70 rounded-2xl p-4">
+                  <p className="text-2xl mb-1">{item.icon}</p>
+                  <p className="text-xs text-purple-500 font-semibold uppercase tracking-wider mb-1">{item.label}</p>
+                  <p className="text-purple-900 font-bold text-sm">{item.value}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}

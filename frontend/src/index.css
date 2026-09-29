@@ -254,3 +254,102 @@ body {
 .sun-tagline {
   animation: fade-up 0.8s ease both;
 }
+
+/* ════════════════════════════════════════
+   DASHBOARD ANIMATIONS
+════════════════════════════════════════ */
+
+/* Slide in from left */
+@keyframes slide-in-left {
+  from { opacity: 0; transform: translateX(-28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Slide in from right */
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(28px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Staggered fade up */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Scale pop for stat numbers */
+@keyframes count-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  70%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+/* Shimmer sweep across a card */
+@keyframes shimmer-sweep {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* Pulsing ring (for risk indicator) */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.92); opacity: 0.8; }
+  50%  { transform: scale(1.08); opacity: 0.3; }
+  100% { transform: scale(0.92); opacity: 0.8; }
+}
+
+/* Bar fill (for temperature gauge) */
+@keyframes bar-fill {
+  from { width: 0%; }
+  to   { width: var(--fill-pct, 70%); }
+}
+
+/* Card hover lift */
+@keyframes card-hover {
+  to { transform: translateY(-3px); box-shadow: 0 12px 36px rgba(224,96,16,0.18); }
+}
+
+/* Tip stagger */
+@keyframes tip-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Dashboard utility classes */
+.dash-slide-left  { animation: slide-in-left  0.5s ease both; }
+.dash-slide-right { animation: slide-in-right 0.5s ease both; }
+.dash-fade-up     { animation: fade-in-up     0.5s ease both; }
+.stat-pop         { animation: count-pop      0.5s cubic-bezier(.34,1.56,.64,1) both; }
+.pulse-ring-anim  { animation: pulse-ring     2.4s ease-in-out infinite; }
+
+/* Stagger delays */
+.delay-100 { animation-delay: 0.1s; }
+.delay-150 { animation-delay: 0.15s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-250 { animation-delay: 0.25s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-350 { animation-delay: 0.35s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+.delay-700 { animation-delay: 0.7s; }
+
+/* Hover lift for cards */
+.card-lift {
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(224,96,16,0.14);
+}
+
+/* Shimmer loading placeholder */
+.shimmer-line {
+  background: linear-gradient(90deg, #fde2b8 25%, #fef6ec 50%, #fde2b8 75%);
+  background-size: 800px 100%;
+  animation: shimmer-sweep 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+/* Tip list item stagger */
+.tip-item { animation: tip-in 0.4s ease both; }
+

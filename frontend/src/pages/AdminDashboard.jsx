@@ -37,8 +37,7 @@ function AdminDashboard() {
 
   const fetchCenters  = async () => { try { const r = await API.get('/cooling-centers'); setCenters(r.data);  } catch {} };
   const fetchHotspots = async () => { try { const r = await API.get('/hotspots');         setHotspots(r.data); } catch {} };
-
-  const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange  = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setMessage('');
@@ -47,36 +46,29 @@ function AdminDashboard() {
       setMessage('success');
       setFormData({ name: '', address: '', city: '', type: 'Park', facilities: 'Shade, Water', contact: '' });
       fetchCenters();
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Failed to add center');
-    }
+    } catch (err) { setMessage(err.response?.data?.message || 'Failed to add center'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this cooling center?')) return;
-    try { await API.delete(`/cooling-centers/${id}`); fetchCenters(); } catch {}
-  };
-
-  const handleStatusChange = async (id, newStatus) => {
-    try { await API.put(`/hotspots/${id}`, { status: newStatus }); fetchHotspots(); } catch {}
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    navigate('/login');
-  };
+  const handleDelete       = async (id) => { if (!window.confirm('Delete this cooling center?')) return; try { await API.delete(`/cooling-centers/${id}`); fetchCenters(); } catch {} };
+  const handleStatusChange = async (id, status) => { try { await API.put(`/hotspots/${id}`, { status }); fetchHotspots(); } catch {} };
+  const handleLogout       = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); };
 
   if (!user) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-10 h-10 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin" />
-        <p className="text-orange-600 font-medium text-sm">Loading admin panel...</p>
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 border-4 border-orange-100 rounded-full" />
+          <div className="absolute inset-0 border-4 border-t-orange-500 rounded-full animate-spin" />
+        </div>
+        <p className="text-sm font-semibold" style={{ color: '#e06010' }}>Loading admin panel...</p>
       </div>
     </div>
   );
 
-  const inputClass = 'chhaya-input';
+  const inp = 'chhaya-input';
+  const pendingCount  = hotspots.filter(h => h.status === 'Pending').length;
+  const verifiedCount = hotspots.filter(h => h.status === 'Verified').length;
+  const resolvedCount = hotspots.filter(h => h.status === 'Resolved').length;
 
   return (
     <div className="min-h-screen">
@@ -84,7 +76,7 @@ function AdminDashboard() {
       {/* ── Admin Navbar ── */}
       <nav className="sticky top-0 z-50 bg-white border-b border-orange-100"
         style={{ boxShadow: '0 1px 8px rgba(249,115,22,0.08)' }}>
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm"
               style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
@@ -95,7 +87,6 @@ function AdminDashboard() {
               <span className="ml-2 text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">Admin</span>
             </div>
           </div>
-
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2">
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
@@ -105,19 +96,40 @@ function AdminDashboard() {
               <span className="text-sm font-semibold text-gray-800">{user.name}</span>
             </div>
             <button onClick={handleLogout}
-              className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50
-                         hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
+              className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
               Logout
             </button>
           </div>
         </div>
       </nav>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 space-y-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-7">
 
-        {/* ── Welcome / Stats banner ── */}
-        <div className="chhaya-card p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        {/* ══ ROW 1: Stats grid ══ */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[
+            { label: 'Cooling Centers', value: centers.length,  icon: '🌿', color: '#e06010', bg: '#fff7ed', border: '#fdba74' },
+            { label: 'Total Reports',   value: hotspots.length, icon: '📋', color: '#dc2626', bg: '#fff1f2', border: '#fca5a5' },
+            { label: 'Pending',         value: pendingCount,    icon: '⏳', color: '#d97706', bg: '#fefce8', border: '#fde68a' },
+            { label: 'Resolved',        value: resolvedCount,   icon: '✅', color: '#16a34a', bg: '#f0fdf4', border: '#86efac' },
+          ].map((stat, i) => (
+            <div key={stat.label}
+              className={`rounded-2xl p-5 card-lift border dash-fade-up delay-${(i+1)*100}`}
+              style={{ background: stat.bg, borderColor: stat.border }}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{stat.label}</p>
+                  <p className={`text-3xl font-extrabold stat-pop delay-${(i+2)*100}`} style={{ color: stat.color }}>{stat.value}</p>
+                </div>
+                <span className="text-3xl opacity-70">{stat.icon}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ══ ROW 2: Welcome banner ══ */}
+        <div className="chhaya-card p-6 sm:p-7 mb-6 dash-slide-left">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <p className="section-label">Admin Panel</p>
               <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
@@ -125,124 +137,127 @@ function AdminDashboard() {
               </h2>
               <p className="text-gray-500 text-sm mt-1">Cooling Centers &amp; Hotspot Reports</p>
             </div>
-            <div className="flex gap-3 shrink-0">
-              <div className="text-center bg-orange-50 border border-orange-100 rounded-2xl px-6 py-3">
-                <p className="text-2xl font-extrabold" style={{ color: '#e06010' }}>{centers.length}</p>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">Centers</p>
-              </div>
-              <div className="text-center bg-red-50 border border-red-100 rounded-2xl px-6 py-3">
-                <p className="text-2xl font-extrabold text-red-500">{hotspots.length}</p>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">Reports</p>
-              </div>
-              <div className="text-center bg-yellow-50 border border-yellow-100 rounded-2xl px-6 py-3">
-                <p className="text-2xl font-extrabold text-yellow-600">{hotspots.filter(h => h.status === 'Pending').length}</p>
-                <p className="text-xs text-gray-500 font-medium mt-0.5">Pending</p>
-              </div>
+            {/* Mini progress bars */}
+            <div className="flex flex-col gap-2 min-w-[200px]">
+              {hotspots.length > 0 && [
+                { label: 'Pending',  count: pendingCount,  color: '#d97706', pct: `${Math.round(pendingCount/hotspots.length*100)}%`  },
+                { label: 'Verified', count: verifiedCount, color: '#2563eb', pct: `${Math.round(verifiedCount/hotspots.length*100)}%` },
+                { label: 'Resolved', count: resolvedCount, color: '#16a34a', pct: `${Math.round(resolvedCount/hotspots.length*100)}%` },
+              ].map(bar => (
+                <div key={bar.label}>
+                  <div className="flex justify-between text-xs font-medium text-gray-500 mb-0.5">
+                    <span>{bar.label}</span><span>{bar.count}</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: bar.pct, background: bar.color, animation: 'bar-fill 1s ease 0.3s both', '--fill-pct': bar.pct }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* ── Tabs ── */}
-        <div className="flex gap-1.5 bg-white p-1.5 rounded-2xl border border-orange-100 w-fit"
+        {/* ══ Tabs ══ */}
+        <div className="flex gap-1.5 bg-white p-1.5 rounded-2xl border border-orange-100 w-fit mb-5 dash-fade-up delay-200"
           style={{ boxShadow: '0 2px 8px rgba(249,115,22,0.07)' }}>
           {[
-            { key: 'centers',  label: '🌿 Cooling Centers' },
-            { key: 'hotspots', label: `🚨 Reports (${hotspots.length})` },
+            { key: 'centers',  label: '🌿 Cooling Centers', count: centers.length  },
+            { key: 'hotspots', label: '🚨 Reports',         count: hotspots.length },
           ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${
+            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 ${
                 activeTab === tab.key ? 'text-white shadow-md' : 'text-gray-600 hover:bg-orange-50'
               }`}
-              style={activeTab === tab.key ? { background: 'linear-gradient(135deg,#e06010,#c97d08)' } : {}}
-            >
+              style={activeTab === tab.key ? { background: 'linear-gradient(135deg,#e06010,#c97d08)' } : {}}>
               {tab.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab.key ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                {tab.count}
+              </span>
             </button>
           ))}
         </div>
 
         {/* ═══ COOLING CENTERS TAB ═══ */}
         {activeTab === 'centers' && (
-          <>
-            {/* Add center form */}
-            <div className="chhaya-card p-6 sm:p-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Add New Cooling Center</h3>
-              <p className="text-sm text-gray-400 mb-6">Fill in the details to register a new center</p>
+          <div className="grid grid-cols-1 xl:grid-cols-5 gap-5 dash-fade-up delay-250">
+
+            {/* Add form — left 2 cols */}
+            <div className="xl:col-span-2 chhaya-card p-6 self-start">
+              <h3 className="text-base font-bold text-gray-900 mb-0.5">➕ Add New Center</h3>
+              <p className="text-xs text-gray-400 mb-5">Register a cooling center for workers</p>
 
               {message && (
-                <div className={`alert mb-5 ${message === 'success' ? 'alert-success' : 'alert-error'}`}>
-                  {message === 'success' ? '✅ Cooling center added successfully!' : `⚠️ ${message}`}
+                <div className={`alert mb-4 ${message === 'success' ? 'alert-success' : 'alert-error'}`}>
+                  {message === 'success' ? '✅ Added successfully!' : `⚠️ ${message}`}
                 </div>
               )}
 
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Center Name</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Center Name *</label>
                   <input type="text" name="name" value={formData.name} onChange={handleChange}
-                    required placeholder="e.g. Gandhi Park Shelter" className={inputClass} />
+                    required placeholder="e.g. Gandhi Park Shelter" className={inp} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">City</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">City *</label>
                   <input type="text" name="city" value={formData.city} onChange={handleChange}
-                    required placeholder="e.g. Vadodara" className={inputClass} />
+                    required placeholder="e.g. Vadodara" className={inp} />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Full Address</label>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Full Address *</label>
                   <input type="text" name="address" value={formData.address} onChange={handleChange}
-                    required placeholder="Full address of the center" className={inputClass} />
+                    required placeholder="Full address" className={inp} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Type</label>
+                    <select name="type" value={formData.type} onChange={handleChange} className={inp}>
+                      <option>Park</option><option>Community Hall</option>
+                      <option>School</option><option>Hospital</option><option>Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Contact</label>
+                    <input type="text" name="contact" value={formData.contact} onChange={handleChange}
+                      placeholder="Phone/email" className={inp} />
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Type</label>
-                  <select name="type" value={formData.type} onChange={handleChange} className={inputClass}>
-                    <option value="Park">Park</option>
-                    <option value="Community Hall">Community Hall</option>
-                    <option value="School">School</option>
-                    <option value="Hospital">Hospital</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Facilities</label>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Facilities</label>
                   <input type="text" name="facilities" value={formData.facilities} onChange={handleChange}
-                    placeholder="e.g. Shade, Water, AC" className={inputClass} />
+                    placeholder="e.g. Shade, Water, AC" className={inp} />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Contact (optional)</label>
-                  <input type="text" name="contact" value={formData.contact} onChange={handleChange}
-                    placeholder="Phone or email" className={inputClass} />
-                </div>
-                <div className="md:col-span-2">
-                  <button type="submit" className="chhaya-btn-primary py-3 px-8">
-                    + Add Cooling Center
-                  </button>
-                </div>
+                <button type="submit" className="chhaya-btn-primary w-full py-3 mt-1">
+                  + Add Cooling Center
+                </button>
               </form>
             </div>
 
-            {/* All centers list */}
-            <div className="chhaya-card p-6 sm:p-8">
-              <h3 className="text-lg font-bold text-gray-900 mb-5">
-                All Cooling Centers
-                <span className="ml-2 text-sm font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">{centers.length}</span>
-              </h3>
+            {/* Centers list — right 3 cols */}
+            <div className="xl:col-span-3 chhaya-card p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="font-bold text-gray-900">
+                  All Cooling Centers
+                  <span className="ml-2 text-sm font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">{centers.length}</span>
+                </h3>
+              </div>
               {centers.length === 0 ? (
-                <div className="text-center py-10">
-                  <span className="text-4xl">🏢</span>
+                <div className="text-center py-12">
+                  <span className="text-5xl">🏢</span>
                   <p className="text-gray-400 text-sm mt-3">No cooling centers added yet.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {centers.map(center => (
+                <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
+                  {centers.map((center, i) => (
                     <div key={center._id}
-                      className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3
-                                 border border-gray-100 rounded-2xl p-5 hover:bg-orange-50/40 hover:border-orange-200 hover:shadow-sm transition-all duration-200">
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100 rounded-2xl p-4 hover:bg-orange-50/40 hover:border-orange-200 transition-all duration-200 tip-item`}
+                      style={{ animationDelay: `${i * 0.06}s` }}>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-bold text-gray-800">{center.name}</h4>
+                          <h4 className="font-bold text-gray-800 text-sm">{center.name}</h4>
                           <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>{center.type}</span>
                         </div>
-                        <p className="text-sm text-gray-500">{center.address}, {center.city}</p>
+                        <p className="text-xs text-gray-500 truncate">{center.address}, {center.city}</p>
                         <p className="text-xs text-gray-400 mt-0.5">🏷️ {center.facilities}</p>
                       </div>
                       <button onClick={() => handleDelete(center._id)} className="chhaya-btn-danger shrink-0">
@@ -253,62 +268,73 @@ function AdminDashboard() {
                 </div>
               )}
             </div>
-          </>
+          </div>
         )}
 
         {/* ═══ HOTSPOTS TAB ═══ */}
         {activeTab === 'hotspots' && (
-          <div className="chhaya-card p-6 sm:p-8">
-            <h3 className="text-lg font-bold text-gray-900 mb-5">
-              Reported Hotspots
-              <span className="ml-2 text-sm font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">{hotspots.length}</span>
-            </h3>
-            {hotspots.length === 0 ? (
-              <div className="text-center py-10">
-                <span className="text-4xl">📭</span>
-                <p className="text-gray-400 text-sm mt-3">No hotspots reported yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {hotspots.map(spot => (
-                  <div key={spot._id}
-                    className="border border-gray-100 rounded-2xl p-5 hover:bg-red-50/30 hover:border-red-100 hover:shadow-sm transition-all duration-200">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-bold text-gray-800">📍 {spot.location}</h4>
-                        <p className="text-sm text-gray-500 mt-1">
-                          🏙️ City: <span className="font-medium text-gray-700">{spot.city}</span>
-                        </p>
-                        {spot.description && (
-                          <p className="text-sm text-gray-400 mt-1.5 italic">📝 {spot.description}</p>
-                        )}
+          <div className="dash-fade-up delay-250">
+            {/* Filter row */}
+            <div className="flex flex-wrap gap-3 mb-5">
+              {[
+                { label: `All (${hotspots.length})`,      filter: null,       bg: '#f3f4f6', color: '#374151' },
+                { label: `Pending (${pendingCount})`,     filter: 'Pending',  bg: '#fef9c3', color: '#854d0e' },
+                { label: `Verified (${verifiedCount})`,   filter: 'Verified', bg: '#dbeafe', color: '#1e40af' },
+                { label: `Resolved (${resolvedCount})`,   filter: 'Resolved', bg: '#dcfce7', color: '#166534' },
+              ].map(f => (
+                <span key={f.label} className="badge cursor-default" style={{ background: f.bg, color: f.color, borderColor: 'transparent', padding: '0.4rem 1rem', fontSize: '0.78rem' }}>
+                  {f.label}
+                </span>
+              ))}
+            </div>
+
+            <div className="chhaya-card p-6">
+              <h3 className="font-bold text-gray-900 mb-5">
+                Reported Hotspots
+                <span className="ml-2 text-sm font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">{hotspots.length}</span>
+              </h3>
+              {hotspots.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-5xl">📭</span>
+                  <p className="text-gray-400 text-sm mt-3">No hotspots reported yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {hotspots.map((spot, i) => (
+                    <div key={spot._id}
+                      className={`border border-gray-100 rounded-2xl p-5 hover:shadow-md hover:border-red-100 transition-all duration-200 tip-item relative overflow-hidden`}
+                      style={{ animationDelay: `${i * 0.05}s` }}>
+                      {/* Status stripe */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl"
+                        style={{ background: spot.status === 'Pending' ? '#eab308' : spot.status === 'Verified' ? '#2563eb' : '#16a34a' }} />
+                      <div className="pl-3">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h4 className="font-bold text-gray-800 text-sm">📍 {spot.location}</h4>
+                          <span className={`badge shrink-0 ${spot.status === 'Pending' ? 'badge-pending' : spot.status === 'Verified' ? 'badge-verified' : 'badge-resolved'}`}>
+                            {spot.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">🏙️ {spot.city}</p>
+                        {spot.description && <p className="text-xs text-gray-400 mt-1 italic">"{spot.description}"</p>}
                         <p className="text-xs text-gray-400 mt-2">
-                          Reported by: <span className="font-medium">{spot.reportedBy?.name || 'Unknown'}</span>
-                          {' · '}{new Date(spot.createdAt).toLocaleString()}
+                          By <span className="font-medium">{spot.reportedBy?.name || 'Unknown'}</span>
+                          {' · '}{new Date(spot.createdAt).toLocaleDateString('en-IN')}
                         </p>
-                      </div>
-                      <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 shrink-0">
-                        <span className={`badge ${
-                          spot.status === 'Pending'  ? 'badge-pending'  :
-                          spot.status === 'Verified' ? 'badge-verified' : 'badge-resolved'
-                        }`}>{spot.status}</span>
-                        <select
-                          value={spot.status}
-                          onChange={e => handleStatusChange(spot._id, e.target.value)}
-                          className="text-sm border border-gray-200 rounded-xl px-3 py-1.5 bg-gray-50
-                                     focus:border-orange-400 focus:ring-2 focus:ring-orange-100
-                                     outline-none cursor-pointer transition-all duration-200 font-medium"
-                        >
-                          <option value="Pending">Pending</option>
-                          <option value="Verified">Verified</option>
-                          <option value="Resolved">Resolved</option>
-                        </select>
+                        <div className="mt-3 flex items-center gap-2">
+                          <label className="text-xs font-semibold text-gray-500">Update:</label>
+                          <select value={spot.status} onChange={e => handleStatusChange(spot._id, e.target.value)}
+                            className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-gray-50 focus:border-orange-400 outline-none cursor-pointer transition-all font-semibold flex-1">
+                            <option value="Pending">Pending</option>
+                            <option value="Verified">Verified</option>
+                            <option value="Resolved">Resolved</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
