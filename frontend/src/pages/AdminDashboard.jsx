@@ -70,8 +70,56 @@ function AdminDashboard() {
   const verifiedCount = hotspots.filter(h => h.status === 'Verified').length;
   const resolvedCount = hotspots.filter(h => h.status === 'Resolved').length;
 
+  const hwStripes = [
+    { pos: 8,  delay: '0s',    h: 110, dur: '2.6s' },
+    { pos: 20, delay: '0.7s',  h: 90,  dur: '2.2s' },
+    { pos: 32, delay: '1.4s',  h: 130, dur: '3.0s' },
+    { pos: 44, delay: '0.3s',  h: 80,  dur: '2.4s' },
+    { pos: 56, delay: '1.1s',  h: 100, dur: '2.8s' },
+    { pos: 68, delay: '1.8s',  h: 70,  dur: '2.0s' },
+  ];
+  const hwGlows = [
+    { pos: 5,  delay: '0.5s',  h: 150, dur: '3.4s' },
+    { pos: 28, delay: '1.3s',  h: 120, dur: '3.0s' },
+    { pos: 52, delay: '0.9s',  h: 170, dur: '3.8s' },
+  ];
+
+  const SideHeatWaves = ({ side }) => (
+    <div aria-hidden="true" className={`side-heat-waves side-heat-waves-${side}`}>
+      <div className="side-heat-gradient" />
+      {hwGlows.map((g, i) => (
+        <div
+          key={i}
+          className="hw-glow"
+          style={{
+            [side === 'left' ? 'left' : 'right']: `${g.pos}px`,
+            '--hw-delay': g.delay,
+            '--hw-h': `${g.h}px`,
+            '--hw-dur': g.dur,
+          }}
+        />
+      ))}
+      {hwStripes.map((s, i) => (
+        <div
+          key={i}
+          className="hw-stripe"
+          style={{
+            [side === 'left' ? 'left' : 'right']: `${s.pos}px`,
+            '--hw-delay': s.delay,
+            '--hw-h': `${s.h}px`,
+            '--hw-dur': s.dur,
+          }}
+        />
+      ))}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ position: 'relative', overflow: 'hidden' }}>
+
+      {/* ── Side Heat Waves ── */}
+      <SideHeatWaves side="left" />
+      <SideHeatWaves side="right" />
 
       {/* ── Admin Navbar ── */}
       <nav className="sticky top-0 z-50 bg-white border-b border-orange-100"

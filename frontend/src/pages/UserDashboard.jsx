@@ -5,11 +5,11 @@ import Navbar from '../components/Navbar';
 import MapView from '../components/MapView';
 
 const RISK_CONFIG = {
-  Low:         { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
-  Moderate:    { bg: '#fefce8', border: '#fde68a', textColor: '#854d0e', badgeBg: '#fef9c3', badgeText: '#713f12', dot: '#eab308', barColor: '#eab308' },
-  High:        { bg: '#fff7ed', border: '#fdba74', textColor: '#c2410c', badgeBg: '#ffedd5', badgeText: '#9a3412', dot: '#e06010', barColor: '#e06010' },
+  Low: { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
+  Moderate: { bg: '#fefce8', border: '#fde68a', textColor: '#854d0e', badgeBg: '#fef9c3', badgeText: '#713f12', dot: '#eab308', barColor: '#eab308' },
+  High: { bg: '#fff7ed', border: '#fdba74', textColor: '#c2410c', badgeBg: '#ffedd5', badgeText: '#9a3412', dot: '#e06010', barColor: '#e06010' },
   'Very High': { bg: '#fff1f2', border: '#fca5a5', textColor: '#b91c1c', badgeBg: '#fee2e2', badgeText: '#991b1b', dot: '#dc2626', barColor: '#dc2626' },
-  Extreme:     { bg: '#fff1f2', border: '#f87171', textColor: '#991b1b', badgeBg: '#fecaca', badgeText: '#7f1d1d', dot: '#dc2626', barColor: '#dc2626' },
+  Extreme: { bg: '#fff1f2', border: '#f87171', textColor: '#991b1b', badgeBg: '#fecaca', badgeText: '#7f1d1d', dot: '#dc2626', barColor: '#dc2626' },
 };
 
 const RISK_BAR_PCT = { Low: '20%', Moderate: '45%', High: '65%', 'Very High': '82%', Extreme: '100%' };
@@ -24,19 +24,19 @@ const SAFETY_TIPS = [
 ];
 
 function UserDashboard() {
-  const [user,           setUser]           = useState(null);
-  const [heatData,       setHeatData]       = useState(null);
-  const [centers,        setCenters]        = useState([]);
-  const [hotspots,       setHotspots]       = useState([]);
-  const [loading,        setLoading]        = useState(true);
+  const [user, setUser] = useState(null);
+  const [heatData, setHeatData] = useState(null);
+  const [centers, setCenters] = useState([]);
+  const [hotspots, setHotspots] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
-  const [reportData,     setReportData]     = useState({ location: '', city: '', description: '' });
-  const [reportMessage,  setReportMessage]  = useState('');
+  const [reportData, setReportData] = useState({ location: '', city: '', description: '' });
+  const [reportMessage, setReportMessage] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
-    const token      = localStorage.getItem('token');
+    const token = localStorage.getItem('token');
     if (!token || !storedUser) { navigate('/login'); return; }
     const parsedUser = JSON.parse(storedUser);
     setUser(parsedUser);
@@ -47,9 +47,9 @@ function UserDashboard() {
     fetchHotspots(city);
   }, [navigate]);
 
-  const fetchHeatData      = async (city) => { try { const r = await API.get(`/alerts?city=${city}`);          setHeatData(r.data);  } catch { setHeatData(null); } finally { setLoading(false); } };
-  const fetchCoolingCenters = async (city) => { try { const r = await API.get(`/cooling-centers?city=${city}`); setCenters(r.data);   } catch { setCenters([]); } };
-  const fetchHotspots      = async (city) => { try { const r = await API.get(`/hotspots?city=${city}`);         setHotspots(r.data);  } catch { setHotspots([]); } };
+  const fetchHeatData = async (city) => { try { const r = await API.get(`/alerts?city=${city}`); setHeatData(r.data); } catch { setHeatData(null); } finally { setLoading(false); } };
+  const fetchCoolingCenters = async (city) => { try { const r = await API.get(`/cooling-centers?city=${city}`); setCenters(r.data); } catch { setCenters([]); } };
+  const fetchHotspots = async (city) => { try { const r = await API.get(`/hotspots?city=${city}`); setHotspots(r.data); } catch { setHotspots([]); } };
 
   const handleReportChange = e => setReportData({ ...reportData, [e.target.name]: e.target.value });
   const handleReportSubmit = async (e) => {
@@ -75,14 +75,67 @@ function UserDashboard() {
     </div>
   );
 
-  const riskCfg     = heatData ? (RISK_CONFIG[heatData.riskLevel] || RISK_CONFIG['Low']) : null;
-  const riskBarPct  = heatData ? (RISK_BAR_PCT[heatData.riskLevel] || '20%') : '0%';
+  const riskCfg = heatData ? (RISK_CONFIG[heatData.riskLevel] || RISK_CONFIG['Low']) : null;
+  const riskBarPct = heatData ? (RISK_BAR_PCT[heatData.riskLevel] || '20%') : '0%';
+
+  // Heat wave stripe config: [left positions (px from edge), delay, height, duration]
+  const hwStripes = [
+    { pos: 8,  delay: '0s',    h: 110, dur: '2.6s' },
+    { pos: 20, delay: '0.7s',  h: 90,  dur: '2.2s' },
+    { pos: 32, delay: '1.4s',  h: 130, dur: '3.0s' },
+    { pos: 44, delay: '0.3s',  h: 80,  dur: '2.4s' },
+    { pos: 56, delay: '1.1s',  h: 100, dur: '2.8s' },
+    { pos: 68, delay: '1.8s',  h: 70,  dur: '2.0s' },
+  ];
+  const hwGlows = [
+    { pos: 5,  delay: '0.5s',  h: 150, dur: '3.4s' },
+    { pos: 28, delay: '1.3s',  h: 120, dur: '3.0s' },
+    { pos: 52, delay: '0.9s',  h: 170, dur: '3.8s' },
+  ];
+
+  const SideHeatWaves = ({ side }) => (
+    <div
+      aria-hidden="true"
+      className={`side-heat-waves side-heat-waves-${side}`}
+    >
+      <div className="side-heat-gradient" />
+      {hwGlows.map((g, i) => (
+        <div
+          key={i}
+          className="hw-glow"
+          style={{
+            [side === 'left' ? 'left' : 'right']: `${g.pos}px`,
+            '--hw-delay': g.delay,
+            '--hw-h': `${g.h}px`,
+            '--hw-dur': g.dur,
+          }}
+        />
+      ))}
+      {hwStripes.map((s, i) => (
+        <div
+          key={i}
+          className="hw-stripe"
+          style={{
+            [side === 'left' ? 'left' : 'right']: `${s.pos}px`,
+            '--hw-delay': s.delay,
+            '--hw-h': `${s.h}px`,
+            '--hw-dur': s.dur,
+          }}
+        />
+      ))}
+    </div>
+  );
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" style={{ position: 'relative', overflow: 'hidden' }}>
+
+      {/* ── Side Heat Waves ── */}
+      <SideHeatWaves side="left" />
+      <SideHeatWaves side="right" />
+
       <Navbar user={user} />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* ══ ROW 1: Welcome + Quick stats ══ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
@@ -99,15 +152,8 @@ function UserDashboard() {
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>👤 {user.role}</span>
                   {user.occupation && <span className="badge" style={{ background: '#fef9c3', color: '#713f12', borderColor: '#fde68a' }}>🛠️ {user.occupation}</span>}
-                  {user.location   && <span className="badge" style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}>📍 {user.location}</span>}
+                  {user.location && <span className="badge" style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}>📍 {user.location}</span>}
                 </div>
-              </div>
-              {/* Time of day greeting visual */}
-              <div className="shrink-0 w-24 h-24 rounded-3xl flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg,#fff3e0,#fde2b8)' }}>
-                <span className="text-5xl select-none">
-                  {new Date().getHours() < 12 ? '🌅' : new Date().getHours() < 17 ? '☀️' : '🌇'}
-                </span>
               </div>
             </div>
           </div>
@@ -137,7 +183,7 @@ function UserDashboard() {
                   <div className="shimmer-line h-10 w-1/2" />
                   <div className="shimmer-line h-4 w-2/3" />
                   <div className="flex gap-3 mt-4">
-                    {[1,2,3].map(i => <div key={i} className="shimmer-line h-12 w-24 rounded-2xl" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="shimmer-line h-12 w-24 rounded-2xl" />)}
                   </div>
                 </div>
               </div>
@@ -183,10 +229,10 @@ function UserDashboard() {
                   <div className="flex flex-wrap gap-3">
                     {[
                       { icon: '🌡️', label: 'Temperature', value: `${heatData.temperature}°C` },
-                      { icon: '💧', label: 'Humidity',    value: `${heatData.humidity}%`     },
-                      { icon: '🔥', label: 'Heat Index',  value: `${heatData.heatIndex}°C`   },
+                      { icon: '💧', label: 'Humidity', value: `${heatData.humidity}%` },
+                      { icon: '🔥', label: 'Heat Index', value: `${heatData.heatIndex}°C` },
                     ].map((s, i) => (
-                      <div key={s.label} className={`flex items-center gap-2.5 bg-white/65 rounded-2xl px-4 py-2.5 backdrop-blur-sm dash-fade-up delay-${(i+3)*100}`}>
+                      <div key={s.label} className={`flex items-center gap-2.5 bg-white/65 rounded-2xl px-4 py-2.5 backdrop-blur-sm dash-fade-up delay-${(i + 3) * 100}`}>
                         <span className="text-xl">{s.icon}</span>
                         <div>
                           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">{s.label}</p>
@@ -364,8 +410,8 @@ function UserDashboard() {
             <div className="grid sm:grid-cols-3 gap-4">
               {[
                 { label: 'Safe Morning Hours', value: '6 AM – 11 AM', icon: '🌅' },
-                { label: 'Safe Evening Hours', value: '4 PM – 7 PM',  icon: '🌇' },
-                { label: 'Key Reminder',       value: 'Ensure water & shade for all workers', icon: '💡' },
+                { label: 'Safe Evening Hours', value: '4 PM – 7 PM', icon: '🌇' },
+                { label: 'Key Reminder', value: 'Ensure water & shade for all workers', icon: '💡' },
               ].map(item => (
                 <div key={item.label} className="bg-white/70 rounded-2xl p-4">
                   <p className="text-2xl mb-1">{item.icon}</p>
