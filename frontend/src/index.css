@@ -442,3 +442,18 @@ body {
     transparent
   );
 }
+
+/* ════════════════════════════════════════
+   SOS BUTTON PULSE ANIMATION
+════════════════════════════════════════ */
+
+@keyframes pulse-sos {
+  0%, 100% {
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.45), 0 0 0 0 rgba(220, 38, 38, 0.5);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 4px 28px rgba(220, 38, 38, 0.6), 0 0 0 8px rgba(220, 38, 38, 0);
+    transform: scale(1.03);
+  }
+}

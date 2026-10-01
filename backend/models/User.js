@@ -21,11 +21,24 @@ const userSchema = new mongoose.Schema({
   },
   occupation: {
     type: String,
-    default: ''
+    enum: ['construction', 'farmer', 'delivery', 'vendor', 'other'],
+    default: 'other',
+    lowercase: true,
+    trim: true
   },
   location: {
     type: String,
     default: ''
+  },
+  emergencyContactName: {
+    type: String,
+    default: '',
+    trim: true
+  },
+  emergencyContactPhone: {
+    type: String,
+    default: '',
+    trim: true
   }
 }, {
   timestamps: true

@@ -7,7 +7,14 @@ const Spinner = () => <span className="spinner" />;
 
 function Register() {
   const [formData, setFormData] = useState({
-    name: '', phone: '', password: '', role: 'worker', occupation: '', location: ''
+    name: '',
+    phone: '',
+    password: '',
+    role: 'worker',
+    occupation: 'other',
+    location: '',
+    emergencyContactName: '',
+    emergencyContactPhone: ''
   });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
@@ -20,6 +27,10 @@ function Register() {
     e.preventDefault();
     if (!/^[6-9]\d{9}$/.test(formData.phone)) {
       setError('Please enter a valid 10-digit Indian mobile number');
+      return;
+    }
+    if (formData.emergencyContactPhone && !/^[6-9]\d{9}$/.test(formData.emergencyContactPhone)) {
+      setError('Emergency contact phone must be a valid 10-digit Indian mobile number');
       return;
     }
     setError(''); setSuccess(''); setLoading(true);
@@ -101,8 +112,13 @@ function Register() {
               </div>
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Occupation</label>
-                <input name="occupation" type="text" value={formData.occupation} onChange={handleChange}
-                  placeholder="e.g. Construction Worker" className="chhaya-input" />
+                <select name="occupation" value={formData.occupation} onChange={handleChange} className="chhaya-input">
+                  <option value="construction">Construction Worker</option>
+                  <option value="farmer">Farmer</option>
+                  <option value="delivery">Delivery Person</option>
+                  <option value="vendor">Street Vendor</option>
+                  <option value="other">Other</option>
+                </select>
               </div>
             </div>
 

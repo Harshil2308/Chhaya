@@ -18,7 +18,7 @@ function AdminDashboard() {
   const [centers,   setCenters]   = useState([]);
   const [hotspots,  setHotspots]  = useState([]);
   const [formData,  setFormData]  = useState({
-    name: '', address: '', city: '', type: 'Park', facilities: 'Shade, Water', contact: ''
+    name: '', address: '', city: '', type: 'Park', facilities: 'Shade, Water', contact: '', latitude: '', longitude: ''
   });
   const [message,   setMessage]   = useState('');
   const [activeTab, setActiveTab] = useState('centers');
@@ -44,7 +44,7 @@ function AdminDashboard() {
     try {
       await API.post('/cooling-centers', formData);
       setMessage('success');
-      setFormData({ name: '', address: '', city: '', type: 'Park', facilities: 'Shade, Water', contact: '' });
+      setFormData({ name: '', address: '', city: '', type: 'Park', facilities: 'Shade, Water', contact: '', latitude: '', longitude: '' });
       fetchCenters();
     } catch (err) { setMessage(err.response?.data?.message || 'Failed to add center'); }
   };
@@ -270,6 +270,18 @@ function AdminDashboard() {
                       placeholder="Phone/email" className={inp} />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Latitude (optional)</label>
+                    <input type="number" step="any" name="latitude" value={formData.latitude} onChange={handleChange}
+                      placeholder="e.g. 23.0225" className={inp} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Longitude (optional)</label>
+                    <input type="number" step="any" name="longitude" value={formData.longitude} onChange={handleChange}
+                      placeholder="e.g. 72.5714" className={inp} />
+                  </div>
+                </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Facilities</label>
                   <input type="text" name="facilities" value={formData.facilities} onChange={handleChange}
@@ -301,9 +313,14 @@ function AdminDashboard() {
                       className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100 rounded-2xl p-4 hover:bg-orange-50/40 hover:border-orange-200 transition-all duration-200 tip-item`}
                       style={{ animationDelay: `${i * 0.06}s` }}>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h4 className="font-bold text-gray-800 text-sm">{center.name}</h4>
                           <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>{center.type}</span>
+                          {center.latitude != null && center.longitude != null && (
+                            <span className="badge" style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}>
+                              📍 {center.latitude.toFixed(4)}, {center.longitude.toFixed(4)}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-gray-500 truncate">{center.address}, {center.city}</p>
                         <p className="text-xs text-gray-400 mt-0.5">🏷️ {center.facilities}</p>

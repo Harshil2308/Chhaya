@@ -18,7 +18,7 @@ const getCoolingCenters = async (req, res) => {
 
 const addCoolingCenter = async (req, res) => {
   try {
-    const { name, address, city, type, facilities, contact } = req.body;
+    const { name, address, city, type, facilities, contact, latitude, longitude } = req.body;
 
     const center = await CoolingCenter.create({
       name,
@@ -26,7 +26,9 @@ const addCoolingCenter = async (req, res) => {
       city,
       type: type || 'Other',
       facilities: facilities || 'Shade, Water',
-      contact: contact || ''
+      contact: contact || '',
+      latitude: latitude !== undefined && latitude !== '' && !isNaN(Number(latitude)) ? Number(latitude) : null,
+      longitude: longitude !== undefined && longitude !== '' && !isNaN(Number(longitude)) ? Number(longitude) : null
     });
 
     res.status(201).json(center);

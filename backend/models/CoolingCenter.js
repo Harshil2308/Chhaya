@@ -25,6 +25,14 @@ const coolingCenterSchema = new mongoose.Schema({
   contact: {
     type: String,
     default: ''
+  },
+  latitude: {
+    type: Number,
+    default: null
+  },
+  longitude: {
+    type: Number,
+    default: null
   }
 }, {
   timestamps: true
