@@ -1,8 +1,5 @@
 # Dependencies
-node_modules/
-backend/package-lock.json
-frontend/package-lock.json
-frontend/package.json
+node_modules
 
 # Environment variables
 .env
