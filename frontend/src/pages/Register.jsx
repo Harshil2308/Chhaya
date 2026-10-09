@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 import SunPanel from '../components/SunPanel';
+import { useLanguage } from '../context/LanguageContext';
 
 const Spinner = () => <span className="spinner" />;
 
@@ -14,12 +15,14 @@ function Register() {
     occupation: 'other',
     location: '',
     emergencyContactName: '',
-    emergencyContactPhone: ''
+    emergencyContactPhone: '',
+    language: 'en'
   });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { tr } = useLanguage();
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -123,9 +126,19 @@ function Register() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Location / City</label>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>{tr('register.location')}</label>
               <input name="location" type="text" value={formData.location} onChange={handleChange}
-                placeholder="e.g. Ahmedabad" className="chhaya-input" />
+                placeholder={tr('register.locationPlaceholder')} className="chhaya-input" />
+            </div>
+
+            {/* Preferred Language */}
+            <div>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>{tr('register.preferredLanguage')}</label>
+              <select name="language" value={formData.language} onChange={handleChange} className="chhaya-input">
+                <option value="en">English</option>
+                <option value="hi">हिन्दी (Hindi)</option>
+                <option value="gu">ગુજરાતી (Gujarati)</option>
+              </select>
             </div>
 
             <button type="submit" disabled={loading} className="chhaya-btn-primary w-full py-3.5 mt-1">

@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useState, useEffect } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 
 const FIRST_AID_STEPS = [
   {
@@ -131,6 +132,10 @@ function FirstAid() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [activeStep, setActiveStep] = useState(null);
+  const { tr, translations } = useLanguage();
+
+  // Use translated prevention tips when available
+  const preventionTips = (translations.firstAid?.preventionTips) || PREVENTION_TIPS;
 
   useEffect(() => {
     const stored = localStorage.getItem('user');
@@ -150,16 +155,16 @@ function FirstAid() {
               <div className="flex items-center gap-3 mb-2">
                 <span className="text-3xl">🏥</span>
                 <div>
-                  <h1 className="text-2xl font-extrabold text-gray-900">Heat Stroke First Aid</h1>
-                  <p className="text-xs text-gray-500 mt-0.5">Emergency guide for outdoor workers</p>
+                  <h1 className="text-2xl font-extrabold text-gray-900">{tr('firstAid.title')}</h1>
+                  <p className="text-xs text-gray-500 mt-0.5">{tr('firstAid.subtitle')}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-3">
                 <span className="badge" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fca5a5' }}>
-                  Life-saving steps
+                  {tr('firstAid.lifeSavingBadge')}
                 </span>
                 <span className="badge" style={{ background: '#fef9c3', color: '#713f12', borderColor: '#fde68a' }}>
-                  Construction, Farming, Delivery, Vending
+                  {tr('firstAid.jobsBadge')}
                 </span>
               </div>
             </div>
@@ -169,14 +174,14 @@ function FirstAid() {
               className="text-sm font-bold px-5 py-2.5 rounded-xl transition-all duration-200 border cursor-pointer shrink-0"
               style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}
             >
-              Back to Dashboard
+              {tr('firstAid.backToDashboard')}
             </button>
           </div>
         </div>
 
         {/* Emergency Numbers */}
         <div className="rounded-3xl p-5 mb-6 dash-fade-up" style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 8px 32px rgba(220,38,38,0.35)' }}>
-          <p className="text-white text-xs font-bold uppercase tracking-widest mb-3 opacity-80">Save These Numbers Now</p>
+          <p className="text-white text-xs font-bold uppercase tracking-widest mb-3 opacity-80">{tr('firstAid.saveNumbers')}</p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {EMERGENCY_NUMBERS.map((item) => (
               <a
@@ -188,7 +193,7 @@ function FirstAid() {
                 <span className="text-xl">{item.icon}</span>
                 <span className="text-white text-[11px] font-semibold leading-tight">{item.name}</span>
                 <span className="text-white text-lg font-extrabold">{item.number}</span>
-                <span className="text-white/60 text-[10px]">Tap to call</span>
+                <span className="text-white/60 text-[10px]">{tr('firstAid.tapToCall')}</span>
               </a>
             ))}
           </div>
@@ -197,8 +202,8 @@ function FirstAid() {
         {/* Step-by-step */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="font-extrabold text-gray-900 text-lg">Step-by-Step Emergency Response</h2>
-            <span className="badge" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fca5a5' }}>Follow in order</span>
+            <h2 className="font-extrabold text-gray-900 text-lg">{tr('firstAid.stepByStep')}</h2>
+            <span className="badge" style={{ background: '#fef2f2', color: '#991b1b', borderColor: '#fca5a5' }}>{tr('firstAid.followInOrder')}</span>
           </div>
 
           <div className="space-y-4">
@@ -291,9 +296,9 @@ function FirstAid() {
 
         {/* Prevention */}
         <div className="rounded-3xl p-6 mb-6 dash-fade-up border border-blue-100" style={{ background: 'linear-gradient(135deg,#eff6ff,#dbeafe)' }}>
-          <h2 className="font-extrabold text-blue-900 text-lg mb-4">Prevention — Work Safer Every Day</h2>
+          <h2 className="font-extrabold text-blue-900 text-lg mb-4">{tr('firstAid.prevention')}</h2>
           <div className="grid sm:grid-cols-2 gap-3">
-            {PREVENTION_TIPS.map((item, i) => (
+            {preventionTips.map((item, i) => (
               <div key={i} className="flex items-start gap-3 rounded-2xl px-4 py-3 text-sm font-medium backdrop-blur-sm"
                 style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(255,255,255,0.5)', color: '#1e3a8a' }}>
                 <span className="text-xl shrink-0">{item.icon}</span>
@@ -305,8 +310,8 @@ function FirstAid() {
 
         {/* Footer */}
         <div className="text-center py-4 text-xs text-gray-400">
-          <p>This guide is for first-response assistance only. Always call emergency services for serious symptoms.</p>
-          <p className="mt-1">Chhaya Heat-Safety System · Outdoor Worker Protection</p>
+          <p>{tr('firstAid.footer')}</p>
+          <p className="mt-1">{tr('firstAid.footerSub')}</p>
         </div>
 
       </div>

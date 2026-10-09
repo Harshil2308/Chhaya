@@ -6,6 +6,7 @@ import MapView from '../components/MapView';
 import PersonalizedRiskCard from '../components/PersonalizedRiskCard';
 import SafeShiftPlanner from '../components/SafeShiftPlanner';
 import { calculateHaversineDistance } from '../utils/geoDistance';
+import { useLanguage } from '../context/LanguageContext';
 
 const RISK_CONFIG = {
   Low: { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
@@ -34,8 +35,9 @@ const SAFETY_TIPS = [
   { icon: '🧂', tip: 'Mix ORS or lemon-salt in your water bottle' },
 ];
 
-// ── SOS Modal Component ──────────────────────────────────────────────────────
-function SOSModal({ user, onClose, userCoords }) {
+// SOSModal + Dashboard now consume translations via useLanguage.
+// SOSModal receives tr + lang as props to avoid hook rules issues inside conditional render.
+function SOSModal({ user, onClose, userCoords, tr }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [locationText, setLocationText] = useState('');
@@ -91,139 +93,139 @@ function SOSModal({ user, onClose, userCoords }) {
   };
 
   return (
-    <div
-      id="sos-modal-overlay"
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
       <div
-        className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
-        style={{ background: '#fff', border: '3px solid #dc2626', maxHeight: '95vh', overflowY: 'auto' }}
+        id="sos-modal-overlay"
+        className="fixed inset-0 flex items-center justify-center z-50 p-4"
+        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       >
-        {/* Header */}
-        <div className="p-5 text-center" style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)' }}>
-          <div className="text-4xl mb-2">🚨</div>
-          <h2 className="text-xl font-extrabold text-white">Heat Emergency SOS</h2>
-          <p className="text-red-100 text-xs mt-1">Alert your contact & call for help instantly</p>
-        </div>
-
-        <div className="p-5 space-y-4">
-
-          {/* Location Info */}
-          <div className="rounded-2xl p-3.5" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-            <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">📍 Your Location</p>
-            <p className="text-sm font-semibold text-green-900">
-              {mapsLink ? `GPS: ${locationText}` : `City: ${locationText}`}
-            </p>
-            {mapsLink && (
-              <a href={mapsLink} target="_blank" rel="noopener noreferrer"
-                className="text-xs text-green-700 underline mt-0.5 block">
-                Open in Google Maps →
-              </a>
-            )}
+        <div
+          className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+          style={{ background: '#fff', border: '3px solid #dc2626', maxHeight: '95vh', overflowY: 'auto' }}
+        >
+          {/* Header */}
+          <div className="p-5 text-center" style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)' }}>
+            <div className="text-4xl mb-2">🚨</div>
+            <h2 className="text-xl font-extrabold text-white">{tr('sos.title')}</h2>
+            <p className="text-red-100 text-xs mt-1">{tr('sos.subtitle')}</p>
           </div>
 
-          {/* Emergency Contact — show saved or manual input */}
-          {savedPhone ? (
-            <div className="rounded-2xl p-3.5" style={{ background: '#fff7ed', border: '1px solid #fdba74' }}>
-              <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">Emergency Contact (Saved)</p>
-              <p className="text-sm font-extrabold text-gray-900">{savedName}</p>
-              <p className="text-sm text-gray-600">{savedPhone}</p>
-            </div>
-          ) : (
-            <div className="rounded-2xl p-3.5" style={{ background: '#fef9c3', border: '1px solid #fde68a' }}>
-              <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">
-                Enter Contact Number for WhatsApp SOS
+          <div className="p-5 space-y-4">
+
+            {/* Location Info */}
+            <div className="rounded-2xl p-3.5" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+              <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">{tr('sos.yourLocation')}</p>
+              <p className="text-sm font-semibold text-green-900">
+                {mapsLink ? `${tr('sos.gps')}: ${locationText}` : `${tr('sos.city')}: ${locationText}`}
               </p>
-              <input
-                id="sos-manual-phone-input"
-                type="tel"
-                inputMode="numeric"
-                maxLength={10}
-                value={manualPhone}
-                onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="e.g. 9876543210"
-                className="chhaya-input text-sm"
-                style={{ background: '#ffffff' }}
-              />
-              <p className="text-[11px] text-yellow-600 mt-1">Enter 10-digit mobile number (India)</p>
-            </div>
-          )}
-
-          {/* Sent confirmation */}
-          {sent && (
-            <div className="rounded-2xl p-3 text-center" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-              <span className="text-2xl">✅</span>
-              <p className="text-sm font-bold text-green-800 mt-1">WhatsApp opened with your SOS message!</p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="space-y-2.5">
-
-            {/* ── Call 108 — primary CTA ── */}
-            <button
-              id="sos-call-108"
-              type="button"
-              onClick={() => callNumber('108')}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-white text-sm transition-all cursor-pointer border-0"
-              style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 4px 16px rgba(220,38,38,0.4)' }}
-            >
-              <span className="text-lg">🚑</span>
-              <span>Call 108 — National Ambulance</span>
-            </button>
-
-            {/* ── WhatsApp SOS — always active if phone available ── */}
-            <button
-              id="sos-whatsapp-btn"
-              type="button"
-              onClick={handleWhatsApp}
-              disabled={!activePhone || activePhone.length < 10}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-white text-sm transition-all cursor-pointer border-0"
-              style={
-                activePhone && activePhone.length >= 10
-                  ? { background: 'linear-gradient(135deg,#16a34a,#15803d)', boxShadow: '0 4px 16px rgba(22,163,74,0.35)' }
-                  : { background: '#d1fae5', color: '#6b7280', cursor: 'not-allowed' }
-              }
-            >
-              {sending ? (
-                <><div className="spinner" /><span>Opening WhatsApp...</span></>
-              ) : (
-                <><span className="text-lg">📲</span>
-                <span>
-                  {activePhone && activePhone.length >= 10
-                    ? `Send SOS to ${savedName || activePhone}`
-                    : 'Enter 10-digit number above'}
-                </span></>
+              {mapsLink && (
+                <a href={mapsLink} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-green-700 underline mt-0.5 block">
+                  {tr('sos.openMaps')}
+                </a>
               )}
-            </button>
+            </div>
 
-            {/* ── Heat Helpline ── */}
+            {/* Emergency Contact — show saved or manual input */}
+            {savedPhone ? (
+              <div className="rounded-2xl p-3.5" style={{ background: '#fff7ed', border: '1px solid #fdba74' }}>
+                <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">{tr('sos.savedContact')}</p>
+                <p className="text-sm font-extrabold text-gray-900">{savedName}</p>
+                <p className="text-sm text-gray-600">{savedPhone}</p>
+              </div>
+            ) : (
+              <div className="rounded-2xl p-3.5" style={{ background: '#fef9c3', border: '1px solid #fde68a' }}>
+                <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">
+                  {tr('sos.enterContactLabel')}
+                </p>
+                <input
+                  id="sos-manual-phone-input"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={manualPhone}
+                  onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  placeholder={tr('sos.contactPlaceholder')}
+                  className="chhaya-input text-sm"
+                  style={{ background: '#ffffff' }}
+                />
+                <p className="text-[11px] text-yellow-600 mt-1">{tr('sos.enterContactHint')}</p>
+              </div>
+            )}
+
+            {/* Sent confirmation */}
+            {sent && (
+              <div className="rounded-2xl p-3 text-center" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
+                <span className="text-2xl">✅</span>
+                <p className="text-sm font-bold text-green-800 mt-1">{tr('sos.whatsappOpened')}</p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+
+              {/* ── Call 108 — primary CTA ── */}
+              <button
+                id="sos-call-108"
+                type="button"
+                onClick={() => callNumber('108')}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-white text-sm transition-all cursor-pointer border-0"
+                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 4px 16px rgba(220,38,38,0.4)' }}
+              >
+                <span className="text-lg">🚑</span>
+                <span>{tr('sos.call108')}</span>
+              </button>
+
+              {/* ── WhatsApp SOS — always active if phone available ── */}
+              <button
+                id="sos-whatsapp-btn"
+                type="button"
+                onClick={handleWhatsApp}
+                disabled={!activePhone || activePhone.length < 10}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-white text-sm transition-all cursor-pointer border-0"
+                style={
+                  activePhone && activePhone.length >= 10
+                    ? { background: 'linear-gradient(135deg,#16a34a,#15803d)', boxShadow: '0 4px 16px rgba(22,163,74,0.35)' }
+                    : { background: '#d1fae5', color: '#6b7280', cursor: 'not-allowed' }
+                }
+              >
+                {sending ? (
+                  <><div className="spinner" /><span>{tr('sos.openingWhatsApp')}</span></>
+                ) : (
+                  <><span className="text-lg">📲</span>
+                  <span>
+                    {activePhone && activePhone.length >= 10
+                      ? `${tr('sos.sendSOS')} ${savedName || activePhone}`
+                      : tr('sos.enterNumber')}
+                  </span></>
+                )}
+              </button>
+
+              {/* ── Heat Helpline ── */}
+              <button
+                id="sos-heat-helpline-btn"
+                type="button"
+                onClick={() => callNumber('18001801104')}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm transition-all border cursor-pointer"
+                style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}
+              >
+                <span className="text-lg">🌡️</span>
+                <span>{tr('sos.heatHelpline')}</span>
+              </button>
+
+            </div>
+
+            {/* Close */}
             <button
-              id="sos-heat-helpline-btn"
-              type="button"
-              onClick={() => callNumber('18001801104')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm transition-all border cursor-pointer"
-              style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}
+              id="sos-modal-close"
+              onClick={onClose}
+              className="w-full py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
             >
-              <span className="text-lg">🌡️</span>
-              <span>Heat Helpline — 1800-180-1104 (Free)</span>
+              {tr('sos.close')}
             </button>
-
           </div>
-
-          {/* Close */}
-          <button
-            id="sos-modal-close"
-            onClick={onClose}
-            className="w-full py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-          >
-            Close
-          </button>
         </div>
       </div>
-    </div>
   );
 }
 
@@ -250,6 +252,11 @@ function UserDashboard() {
   const [userCoords, setUserCoords] = useState(null);
 
   const navigate = useNavigate();
+  const { tr, lang, translations } = useLanguage();
+
+  // Derive translated labels for this render
+  const JOB_LABELS_T = translations.jobLabels || {};
+  const SAFETY_TIPS_T = translations.safetyTips || [];
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -257,6 +264,8 @@ function UserDashboard() {
     if (!token || !storedUser) { navigate('/login'); return; }
     const parsedUser = JSON.parse(storedUser);
     setUser(parsedUser);
+    // Tell LanguageContext a user was loaded (re-syncs language from user.language)
+    window.dispatchEvent(new Event('chhaya-user-loaded'));
     const city = parsedUser.location || 'Ahmedabad';
     const job = parsedUser.occupation || 'other';
     setReportData(prev => ({ ...prev, city }));
@@ -339,7 +348,7 @@ function UserDashboard() {
           <div className="absolute inset-0 border-4 border-orange-100 rounded-full" />
           <div className="absolute inset-0 border-4 border-t-orange-500 rounded-full animate-spin" />
         </div>
-        <p className="text-sm font-semibold" style={{ color: '#e06010' }}>Loading your dashboard...</p>
+        <p className="text-sm font-semibold" style={{ color: '#e06010' }}>{tr('common.loadingDashboard')}</p>
       </div>
     </div>
   );
@@ -387,7 +396,7 @@ function UserDashboard() {
 
       {/* SOS Modal */}
       {showSOS && (
-        <SOSModal user={user} onClose={() => setShowSOS(false)} userCoords={userCoords} />
+        <SOSModal user={user} onClose={() => setShowSOS(false)} userCoords={userCoords} tr={tr} />
       )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7" style={{ position: 'relative', zIndex: 1 }}>
@@ -398,19 +407,17 @@ function UserDashboard() {
           <div className="lg:col-span-2 chhaya-card card-lift p-6 dash-slide-left">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <p className="section-label">Outdoor Worker Safety</p>
+                <p className="section-label">{tr('dashboard.outdoorWorkerSafety')}</p>
                 <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 leading-tight">
-                  Hello, <span style={{ color: '#e06010' }}>{user.name}</span> 👋
+                  {tr('dashboard.hello')}, <span style={{ color: '#e06010' }}>{user.name}</span> 👋
                 </h2>
-                <p className="text-gray-500 text-sm mt-1.5">
-                  Stay safe, hydrate regularly, and take scheduled shade rests while working.
-                </p>
+                <p className="text-gray-500 text-sm mt-1.5">{tr('dashboard.tagline')}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>
                     👤 {user.role}
                   </span>
                   <span className="badge" style={{ background: '#fef9c3', color: '#713f12', borderColor: '#fde68a' }}>
-                    🛠️ {JOB_LABELS[user.occupation] || user.occupation || 'Outdoor Worker'}
+                    🛠️ {JOB_LABELS_T[user.occupation] || JOB_LABELS[user.occupation] || user.occupation || tr('jobLabels.other')}
                   </span>
                   {user.location && (
                     <span className="badge" style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}>
@@ -441,17 +448,17 @@ function UserDashboard() {
           {/* Quick Stat */}
           <div className="chhaya-card card-lift p-6 flex flex-col justify-between dash-slide-right delay-100">
             <div>
-              <p className="section-label">Cooling Centers</p>
+              <p className="section-label">{tr('dashboard.coolingCenters')}</p>
               <p className="text-4xl font-extrabold stat-pop delay-300" style={{ color: '#e06010' }}>
                 {centers.length}
               </p>
-              <p className="text-sm text-gray-500 mt-1">Available in {user.location || 'your area'}</p>
+              <p className="text-sm text-gray-500 mt-1">{tr('dashboard.availableIn')} {user.location || tr('dashboard.yourArea')}</p>
             </div>
             <div className="flex items-center gap-2 mt-4 text-xs font-semibold px-3 py-2 rounded-xl border w-fit"
               style={userCoords
                 ? { background: '#f0fdf4', color: '#166534', borderColor: '#bbf7d0' }
                 : { background: '#fef9c3', color: '#854d0e', borderColor: '#fde68a' }}>
-              {userCoords ? '📍 GPS Distance Active' : '📍 City Fallback Active'}
+              {userCoords ? tr('dashboard.gpsActive') : tr('dashboard.cityFallback')}
             </div>
           </div>
         </div>
@@ -466,8 +473,8 @@ function UserDashboard() {
                 <div className="flex items-center gap-2.5">
                   <span className="text-2xl">🏙️</span>
                   <div>
-                    <h3 className="text-base font-bold text-gray-900 leading-tight">City Risk</h3>
-                    <p className="text-xs text-gray-400">Weather-station shaded baseline</p>
+                    <h3 className="text-base font-bold text-gray-900 leading-tight">{tr('dashboard.cityRisk')}</h3>
+                    <p className="text-xs text-gray-400">{tr('dashboard.cityRiskSubtitle')}</p>
                   </div>
                 </div>
                 {heatData && (
@@ -478,33 +485,33 @@ function UserDashboard() {
               </div>
 
               {loading ? (
-                <div className="py-8 text-center text-gray-400 text-xs">Loading weather data...</div>
+                <div className="py-8 text-center text-gray-400 text-xs">{tr('dashboard.loadingWeather')}</div>
               ) : heatData ? (
                 <>
                   <div className="flex items-baseline gap-3 my-3">
                     <span className="text-4xl sm:text-5xl font-extrabold leading-none" style={{ color: cityRiskCfg.textColor }}>
-                      {heatData.riskLevel}
+                      {tr(`riskLevel.${heatData.riskLevel}`) || heatData.riskLevel}
                     </span>
-                    <span className="text-sm font-bold text-gray-600">(Heat Index {heatData.heatIndex}°C)</span>
+                    <span className="text-sm font-bold text-gray-600">({tr('dashboard.heatIndex')} {heatData.heatIndex}°C)</span>
                   </div>
-                  <p className="text-xs leading-relaxed text-gray-600 mb-4">{heatData.advice}</p>
+                  <p className="text-xs leading-relaxed text-gray-600 mb-4">{tr(`riskAdvice.${heatData.riskLevel}`) || heatData.advice}</p>
                   <div className="flex flex-wrap gap-2.5 pt-3 border-t border-gray-100">
                     <div className="bg-gray-50 rounded-xl px-3 py-1.5 text-xs border border-gray-200">
-                      <span className="text-gray-400 mr-1.5">Temp:</span>
+                      <span className="text-gray-400 mr-1.5">{tr('dashboard.temp')}:</span>
                       <strong className="text-gray-800">{heatData.temperature}°C</strong>
                     </div>
                     <div className="bg-gray-50 rounded-xl px-3 py-1.5 text-xs border border-gray-200">
-                      <span className="text-gray-400 mr-1.5">Humidity:</span>
+                      <span className="text-gray-400 mr-1.5">{tr('dashboard.humidity')}:</span>
                       <strong className="text-gray-800">{heatData.humidity}%</strong>
                     </div>
                     <div className="bg-gray-50 rounded-xl px-3 py-1.5 text-xs border border-gray-200">
-                      <span className="text-gray-400 mr-1.5">Base HI:</span>
+                      <span className="text-gray-400 mr-1.5">{tr('dashboard.baseHI')}:</span>
                       <strong className="text-gray-800">{heatData.heatIndex}°C</strong>
                     </div>
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-gray-400 py-4">Unable to fetch city weather. Check location settings.</p>
+                <p className="text-xs text-gray-400 py-4">{tr('dashboard.noWeatherData')}</p>
               )}
             </div>
             <p className="text-[11px] text-gray-400 mt-4 italic">
@@ -522,9 +529,9 @@ function UserDashboard() {
                 <div className="flex items-center gap-2.5">
                   <span className="text-2xl">👷</span>
                   <div>
-                    <h3 className="text-base font-extrabold text-gray-900 leading-tight">Your Risk</h3>
+                    <h3 className="text-base font-extrabold text-gray-900 leading-tight">{tr('dashboard.yourRisk')}</h3>
                     <p className="text-xs" style={{ color: riskCfg.textColor, opacity: 0.85 }}>
-                      Personalized for {JOB_LABELS[user.occupation] || user.occupation || 'Your Job'}
+                      {tr('dashboard.personalizedFor')} {JOB_LABELS_T[user.occupation] || JOB_LABELS[user.occupation] || user.occupation || 'Your Job'}
                     </p>
                   </div>
                 </div>
@@ -536,7 +543,7 @@ function UserDashboard() {
               </div>
 
               {loading ? (
-                <div className="py-8 text-center text-gray-400 text-xs">Computing personal heat strain...</div>
+                <div className="py-8 text-center text-gray-400 text-xs">{tr('dashboard.computingPersonal')}</div>
               ) : heatData ? (
                 <>
                   <div className="flex items-baseline gap-3 my-3">
@@ -558,22 +565,22 @@ function UserDashboard() {
                   </div>
                   {heatData.reason && (
                     <div className="bg-white/70 backdrop-blur-sm rounded-xl p-2.5 my-2.5 border border-white/80 text-xs text-gray-800">
-                      <span className="font-bold text-gray-900">Why it changed: </span>
+                      <span className="font-bold text-gray-900">{tr('dashboard.whyItChanged')} </span>
                       <span>{heatData.reason}</span>
                     </div>
                   )}
                   <div className="mt-2 text-xs leading-relaxed font-medium" style={{ color: riskCfg.textColor }}>
-                    <span className="font-bold uppercase tracking-wide block mb-1">Practical Shift Guidance:</span>
+                    <span className="font-bold uppercase tracking-wide block mb-1">{tr('dashboard.practicalShiftGuidance')}</span>
                     <span>{heatData.personalAdvice || heatData.advice}</span>
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-gray-400 py-4">Personal risk data unavailable.</p>
+                <p className="text-xs text-gray-400 py-4">{tr('dashboard.noPersonalData')}</p>
               )}
             </div>
             <div className="mt-4 pt-3 border-t border-black/10 flex items-center justify-between text-[11px] text-gray-500">
-              <span>⚠️ Guidance only, not a medical diagnosis.</span>
-              <span className="font-medium text-gray-600">Work safer, stay hydrated</span>
+              <span>⚠️ {tr('common.guidanceDisclaimer')}</span>
+              <span className="font-medium text-gray-600">{tr('common.workSafer')}</span>
             </div>
           </div>
         </div>
@@ -602,8 +609,8 @@ function UserDashboard() {
             style={{ background: 'linear-gradient(135deg,#fef2f2,#ffe4e6)', borderColor: '#fca5a5' }}
           >
             <span className="text-3xl">🏥</span>
-            <p className="font-extrabold text-red-800 text-sm">Heat Stroke First Aid</p>
-            <p className="text-xs text-red-500">Step-by-step emergency guide</p>
+            <p className="font-extrabold text-red-800 text-sm">{tr('quickActions.firstAid')}</p>
+            <p className="text-xs text-red-500">{tr('quickActions.firstAidSub')}</p>
           </button>
 
           {/* Call 108 */}
@@ -614,8 +621,8 @@ function UserDashboard() {
             style={{ background: 'linear-gradient(135deg,#eff6ff,#dbeafe)', borderColor: '#93c5fd' }}
           >
             <span className="text-3xl">🚑</span>
-            <p className="font-extrabold text-blue-800 text-sm">Call 108</p>
-            <p className="text-xs text-blue-500">National Ambulance</p>
+            <p className="font-extrabold text-blue-800 text-sm">{tr('quickActions.call108')}</p>
+            <p className="text-xs text-blue-500">{tr('quickActions.call108Sub')}</p>
           </a>
 
           {/* Heat Helpline */}
@@ -626,8 +633,8 @@ function UserDashboard() {
             style={{ background: 'linear-gradient(135deg,#fff7ed,#ffedd5)', borderColor: '#fdba74' }}
           >
             <span className="text-3xl">🌡️</span>
-            <p className="font-extrabold text-orange-800 text-sm">Heat Helpline</p>
-            <p className="text-xs text-orange-500">1800-180-1104 (Free)</p>
+            <p className="font-extrabold text-orange-800 text-sm">{tr('quickActions.heatHelpline')}</p>
+            <p className="text-xs text-orange-500">{tr('quickActions.heatHelplineSub')}</p>
           </a>
         </div>
 
@@ -646,38 +653,38 @@ function UserDashboard() {
               ? { background: 'linear-gradient(135deg,#e06010,#c97d08)', color: '#fff', borderColor: 'transparent' }
               : { background: '#f9fafb', color: '#4b5563', borderColor: '#e5e7eb' }}
           >
-            {showReportForm ? '✕ Cancel Report' : '🚨 Report Heat Hotspot'}
+            {showReportForm ? tr('dashboard.cancelReport') : tr('dashboard.reportHotspot')}
           </button>
         </div>
 
         {showReportForm && (
           <div className="chhaya-card p-6 sm:p-7 mb-5 dash-fade-up border-l-4" style={{ borderLeftColor: '#e06010' }}>
-            <h3 className="text-base font-bold text-gray-900 mb-4">🚨 Report a Heat Hotspot</h3>
+            <h3 className="text-base font-bold text-gray-900 mb-4">{tr('hotspot.reportTitle')}</h3>
             {reportMessage && (
               <div className={`alert mb-4 ${reportMessage === 'success' ? 'alert-success' : 'alert-error'}`}>
-                {reportMessage === 'success' ? '✅ Hotspot reported successfully!' : `⚠️ ${reportMessage}`}
+                {reportMessage === 'success' ? tr('hotspot.successMsg') : `⚠️ ${reportMessage}`}
               </div>
             )}
             <form onSubmit={handleReportSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Area / Locality *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{tr('hotspot.areaLabel')}</label>
                 <input type="text" name="location" value={reportData.location} onChange={handleReportChange}
-                  required placeholder="e.g. Makarpura, Manjalpur" className="chhaya-input" />
+                  required placeholder={tr('hotspot.areaPlaceholder')} className="chhaya-input" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">City *</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{tr('hotspot.cityLabel')}</label>
                 <input type="text" name="city" value={reportData.city} onChange={handleReportChange}
-                  required placeholder="e.g. Vadodara" className="chhaya-input" />
+                  required placeholder={tr('hotspot.cityPlaceholder')} className="chhaya-input" />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description (optional)</label>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{tr('hotspot.descLabel')}</label>
                 <textarea name="description" value={reportData.description} onChange={handleReportChange}
-                  rows="2" placeholder="e.g. No shade near factory gate, direct asphalt heat"
+                  rows="2" placeholder={tr('hotspot.descPlaceholder')}
                   className="chhaya-input resize-none" />
               </div>
               <div className="sm:col-span-2">
                 <button type="submit" className="px-6 py-2.5 rounded-xl text-white font-bold text-sm bg-red-500 hover:bg-red-600 transition-colors border-0 cursor-pointer">
-                  🚨 Submit Report
+                  {tr('hotspot.submitBtn')}
                 </button>
               </div>
             </form>
@@ -721,8 +728,8 @@ function UserDashboard() {
             style={{ background: 'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)', boxShadow: '0 4px 18px #2563eb12' }}>
             <h3 className="font-bold text-blue-900 mb-4">🛡️ Practical Worker Heat Safety</h3>
             <ul className="space-y-2.5">
-              {SAFETY_TIPS.map((item) => (
-                <li key={item.tip}
+              {SAFETY_TIPS_T.map((item, i) => (
+                <li key={i}
                   className="flex items-center gap-3 bg-white/70 rounded-xl px-3.5 py-2.5 text-sm text-blue-900 font-medium backdrop-blur-sm">
                   <span className="text-lg shrink-0">{item.icon}</span>
                   <span>{item.tip}</span>

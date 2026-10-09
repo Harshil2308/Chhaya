@@ -13,7 +13,8 @@ const register = async (req, res) => {
       occupation,
       location,
       emergencyContactName,
-      emergencyContactPhone
+      emergencyContactPhone,
+      language
     } = req.body;
 
     // Phone number validation
@@ -46,6 +47,9 @@ const register = async (req, res) => {
       ? occupation.toLowerCase().trim()
       : 'other';
 
+    const validLanguages = ['en', 'hi', 'gu'];
+    const sanitizedLanguage = language && validLanguages.includes(language) ? language : 'en';
+
     const user = await User.create({
       name,
       phone,
@@ -54,7 +58,8 @@ const register = async (req, res) => {
       occupation: sanitizedOccupation,
       location: location || '',
       emergencyContactName: emergencyContactName ? emergencyContactName.trim() : '',
-      emergencyContactPhone: emergencyContactPhone ? emergencyContactPhone.trim() : ''
+      emergencyContactPhone: emergencyContactPhone ? emergencyContactPhone.trim() : '',
+      language: sanitizedLanguage
     });
 
     res.status(201).json({
@@ -67,7 +72,8 @@ const register = async (req, res) => {
         occupation: user.occupation,
         location: user.location,
         emergencyContactName: user.emergencyContactName,
-        emergencyContactPhone: user.emergencyContactPhone
+        emergencyContactPhone: user.emergencyContactPhone,
+        language: user.language
       }
     });
   } catch (error) {
@@ -118,7 +124,8 @@ const login = async (req, res) => {
         occupation: user.occupation || 'other',
         location: user.location,
         emergencyContactName: user.emergencyContactName || '',
-        emergencyContactPhone: user.emergencyContactPhone || ''
+        emergencyContactPhone: user.emergencyContactPhone || '',
+        language: user.language || 'en'
       }
     });
   } catch (error) {
@@ -134,7 +141,8 @@ const updateMe = async (req, res) => {
       occupation,
       location,
       emergencyContactName,
-      emergencyContactPhone
+      emergencyContactPhone,
+      language
     } = req.body;
 
     const user = await User.findById(req.user._id);
@@ -169,6 +177,13 @@ const updateMe = async (req, res) => {
       user.emergencyContactPhone = trimmedPhone;
     }
 
+    if (language !== undefined) {
+      const validLanguages = ['en', 'hi', 'gu'];
+      if (validLanguages.includes(language)) {
+        user.language = language;
+      }
+    }
+
     await user.save();
 
     res.json({
@@ -181,7 +196,8 @@ const updateMe = async (req, res) => {
         occupation: user.occupation,
         location: user.location,
         emergencyContactName: user.emergencyContactName,
-        emergencyContactPhone: user.emergencyContactPhone
+        emergencyContactPhone: user.emergencyContactPhone,
+        language: user.language
       }
     });
   } catch (error) {

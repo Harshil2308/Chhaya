@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 const SunIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -12,6 +13,36 @@ const SunIcon = ({ size = 20 }) => (
   </svg>
 );
 
+const LANG_OPTIONS = [
+  { value: 'en', label: 'EN', full: 'English' },
+  { value: 'hi', label: 'हिन्दी', full: 'हिन्दी' },
+  { value: 'gu', label: 'ગુજ', full: 'ગુજરાતી' },
+];
+
+function LanguageSwitcher() {
+  const { lang, setLang } = useLanguage();
+  return (
+    <div className="flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-xl px-1.5 py-1">
+      {LANG_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          id={`lang-btn-${opt.value}`}
+          title={opt.full}
+          onClick={() => setLang(opt.value)}
+          className="text-[11px] font-bold px-2 py-1 rounded-lg transition-all duration-150 cursor-pointer border-0"
+          style={
+            lang === opt.value
+              ? { background: 'linear-gradient(135deg,#e06010,#c97d08)', color: '#fff' }
+              : { background: 'transparent', color: '#9a3412' }
+          }
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Navbar({ user }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -19,6 +50,7 @@ function Navbar({ user }) {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('chhaya_lang');
     navigate('/login');
   };
 
@@ -38,25 +70,30 @@ function Navbar({ user }) {
           </div>
 
           {/* Desktop right */}
-          {user && (
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
-                  style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
-                  {user.name?.charAt(0)?.toUpperCase() || 'U'}
+          <div className="hidden sm:flex items-center gap-3">
+            {/* Language switcher — always visible */}
+            <LanguageSwitcher />
+
+            {user && (
+              <>
+                <div className="flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
+                    style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
+                    {user.name?.charAt(0)?.toUpperCase() || 'U'}
+                  </div>
+                  <div className="leading-tight">
+                    <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                    <p className="text-xs text-orange-500 capitalize font-medium">{user.role}</p>
+                  </div>
                 </div>
-                <div className="leading-tight">
-                  <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                  <p className="text-xs text-orange-500 capitalize font-medium">{user.role}</p>
-                </div>
-              </div>
-              <button onClick={handleLogout}
-                className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50
-                           hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
-                Logout
-              </button>
-            </div>
-          )}
+                <button onClick={handleLogout}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50
+                             hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
+                  Logout
+                </button>
+              </>
+            )}
+          </div>
 
           {/* Mobile hamburger */}
           {user && (
@@ -70,6 +107,11 @@ function Navbar({ user }) {
         {/* Mobile dropdown */}
         {user && menuOpen && (
           <div className="sm:hidden border-t border-orange-100 py-4 space-y-3 px-1">
+            {/* Language switcher mobile */}
+            <div className="flex justify-center">
+              <LanguageSwitcher />
+            </div>
+
             <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-2xl">
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
                 style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
@@ -93,3 +135,4 @@ function Navbar({ user }) {
 }
 
 export default Navbar;
+

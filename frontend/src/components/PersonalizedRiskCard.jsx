@@ -1,4 +1,5 @@
 import { calculatePersonalizedRisk, WORK_TYPES, EXPOSURES } from '../utils/personalizedRisk';
+import ListenButton from './ListenButton';
 
 const RISK_THEMES = {
   Low: { bg: '#f0fdf4', border: '#86efac', text: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', icon: '🌿' },
@@ -170,6 +171,11 @@ function PersonalizedRiskCard({
           <p className="text-xs mt-1.5 font-medium leading-snug" style={{ color: persTheme.text }}>
             {result.personalizedAdvice}
           </p>
+          {result.personalizedAdvice && (
+            <div className="mt-2">
+              <ListenButton text={result.personalizedAdvice} size="sm" />
+            </div>
+          )}
         </div>
       </div>
 

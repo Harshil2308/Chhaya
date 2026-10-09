@@ -17,6 +17,7 @@ app.use('/api/alerts', require('./routes/alertRoutes'));
 app.use('/api/hotspots', require('./routes/hotspotRoutes'));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/cooling-centers', require('./routes/coolingCenterRoutes'));
+app.use('/api/speak', require('./routes/speakRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Chhaya Backend is Running');
