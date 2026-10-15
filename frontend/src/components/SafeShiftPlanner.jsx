@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import API from '../services/api';
+import { useLanguage } from '../context/LanguageContext';
 
 /* ──────────────────────────────────────────────────────────
    Human-crafted colour palette — earthy, warm, considered
@@ -30,6 +31,7 @@ function SafeShiftPlanner({ city }) {
   const [forecast, setForecast] = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(false);
+  const { tr, lang } = useLanguage();
 
   const fetchForecast = useCallback(async () => {
     setLoading(true);
@@ -78,18 +80,18 @@ function SafeShiftPlanner({ city }) {
           <div style={{ display:'flex', alignItems:'center', gap:'0.5rem', flexWrap:'wrap' }}>
             <span style={{ fontSize:'1.2rem' }}>⏱</span>
             <h3 style={{ margin:0, fontSize:'1.05rem', fontWeight:700, color:'#2c2416', letterSpacing:'-0.01em' }}>
-              Safe Shift Planner
+              {tr('safeShift.title')}
             </h3>
             <span style={{
               fontSize:'0.64rem', fontWeight:700, letterSpacing:'0.05em',
               color:'#2d6a35', background:'#eaf4ec', border:'1px solid #9bcfa2',
               borderRadius:'9999px', padding:'0.18rem 0.65rem',
             }}>
-              ● Live Forecast
+              {tr('safeShift.liveForecastBadge')}
             </span>
           </div>
           <p style={{ margin:'0.3rem 0 0', fontSize:'0.775rem', color:'#7a6040', lineHeight:1.5 }}>
-            Dynamic shift scheduling based on OpenWeather 3-hour heat-index forecast.
+            {tr('safeShift.subtitle')}
           </p>
         </div>
         <button
@@ -105,7 +107,7 @@ function SafeShiftPlanner({ city }) {
           onMouseEnter={e => { e.currentTarget.style.background = '#fffbf2'; e.currentTarget.style.borderColor = '#c9900a'; }}
           onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#ddd0b0'; }}
         >
-          {loading ? '↻ Refreshing…' : '↻  Refresh'}
+          {loading ? tr('safeShift.refreshing') : tr('safeShift.refresh')}
         </button>
       </div>
 
@@ -121,7 +123,7 @@ function SafeShiftPlanner({ city }) {
             borderRadius:'50%', animation:'spin 0.8s linear infinite', marginBottom:'0.75rem',
           }} />
           <p style={{ fontSize:'0.78rem', color:'#8a7050', margin:0 }}>
-            Computing 24-hour shift risk timeline…
+            {tr('common.loading')}
           </p>
         </div>
 
@@ -135,14 +137,35 @@ function SafeShiftPlanner({ city }) {
             fontSize:'0.78rem', color:'#7a5100', marginBottom:'1rem', fontWeight:500,
           }}>
             <span>ℹ</span>
-            <span>Live forecast offline — showing recommended baseline shift windows.</span>
+            <span>
+              {lang === 'gu'
+                ? 'લાઇવ આગાહી ઑફલાઇન છે — પ્રમાણભૂત શિફ્ટ સમયગાળો દર્શાવાય છે.'
+                : lang === 'hi'
+                ? 'लाइव पूर्वानुमान ऑफलाइन है — अनुशंसित आधारभूत शिफ़्ट समय प्रदर्शित।'
+                : 'Live forecast offline — showing recommended baseline shift windows.'}
+            </span>
           </div>
           {/* Fallback cards */}
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:'0.875rem' }}>
             {[
-              { emoji:'🌅', label:'Safe Morning',       time:'6:00 AM – 11:00 AM',     note:'Lowest ambient radiant heat' },
-              { emoji:'🌇', label:'Safe Evening',       time:'4:00 PM – 7:00 PM',       note:'Solar radiation subsiding'   },
-              { emoji:'💧', label:'Hydration Protocol', time:'15 min shade rest / hr',  note:'Cool ORS / water at work site' },
+              {
+                emoji:'🌅',
+                label: lang === 'gu' ? 'સુરક્ષિત સવાર' : lang === 'hi' ? 'सुरक्षित सुबह' : 'Safe Morning',
+                time:'6:00 AM – 11:00 AM',
+                note: lang === 'gu' ? 'ઓછો સૂર્યપ્રકાશ અને ગરમી' : lang === 'hi' ? 'न्यूनतम वातावरणीय ताप' : 'Lowest ambient radiant heat'
+              },
+              {
+                emoji:'🌇',
+                label: lang === 'gu' ? 'સુરક્ષિત સાંજ' : lang === 'hi' ? 'सुरक्षित शाम' : 'Safe Evening',
+                time:'4:00 PM – 7:00 PM',
+                note: lang === 'gu' ? 'સાંજે સૂર્યપ્રકાશ ઘટે છે' : lang === 'hi' ? 'सौर विकिरण कम होता है' : 'Solar radiation subsiding'
+              },
+              {
+                emoji:'💧',
+                label: lang === 'gu' ? 'હાઇડ્રેશન નિયમ' : lang === 'hi' ? 'जलयोजन नियम' : 'Hydration Protocol',
+                time: tr('workRest.High'),
+                note: lang === 'gu' ? 'સાઇટ પર ઠંડુ ORS / પાણી' : lang === 'hi' ? 'कार्यस्थल पर ठंडा ORS / पानी' : 'Cool ORS / water at work site'
+              },
             ].map(({ emoji, label, time, note }) => (
               <div key={label} style={{
                 background:'#ffffff', border:'1.5px solid #e8dcc0',
@@ -169,7 +192,7 @@ function SafeShiftPlanner({ city }) {
             <span style={{ fontSize:'1rem', color:'#2d6a35', flexShrink:0, marginTop:'0.05rem' }}>✔</span>
             <div>
               <p style={{ margin:'0 0 0.5rem', fontSize:'0.68rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#1e5225' }}>
-                Recommended Safer Shifts — {forecast.city}
+                {tr('safeShift.safestWindowsTitle')} — {forecast.city}
               </p>
               <div style={{ display:'flex', flexWrap:'wrap', gap:'0.4rem' }}>
                 {forecast.saferWindows?.map((win, idx) => (
@@ -187,7 +210,7 @@ function SafeShiftPlanner({ city }) {
 
           {/* Timeline label */}
           <p style={{ fontSize:'0.66rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.09em', color:'#9a8060', marginBottom:'0.85rem' }}>
-            24-Hour Forward Forecast &amp; Work / Rest Protocol
+            {tr('safeShift.allBlocksTitle')}
           </p>
 
           {/* Block grid */}
@@ -195,6 +218,10 @@ function SafeShiftPlanner({ city }) {
             {forecast.blocks?.map((block, idx) => {
               const badge  = RISK_BADGES[block.riskLevel] || RISK_BADGES.Low;
               const accent = RISK_ACCENT[block.riskLevel] || RISK_ACCENT.Low;
+              const localizedRisk = tr(`riskLevel.${block.riskLevel}`) || block.riskLevel;
+              const localizedWorkRest = tr(`workRest.${block.riskLevel}`) || block.workRest;
+              const localizedGuidance = tr(`riskAdvice.${block.riskLevel}`) || block.guidance;
+
               return (
                 <div
                   key={idx}
@@ -226,27 +253,27 @@ function SafeShiftPlanner({ city }) {
                       whiteSpace:'nowrap',
                     }}>
                       <span style={{ width:'5px', height:'5px', borderRadius:'50%', background: badge.dot, flexShrink:0 }} />
-                      {block.riskLevel}
+                      {localizedRisk}
                     </span>
                   </div>
 
                   {/* temperature */}
                   <div style={{ display:'flex', alignItems:'baseline', gap:'0.4rem', padding:'0.5rem 0.75rem', borderBottom:'1px solid #f0e8d5' }}>
                     <span style={{ fontSize:'1.15rem', fontWeight:800, color:'#2c2416' }}>{block.temp}°C</span>
-                    <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#8a7050' }}>HI {block.heatIndex}°C</span>
+                    <span style={{ fontSize:'0.68rem', fontWeight:600, color:'#8a7050' }}>{tr('safeShift.heatIndexLabel')} {block.heatIndex}°C</span>
                     <span style={{ fontSize:'0.65rem', color:'#a8906a' }}>💧 {block.humidity}%</span>
                   </div>
 
                   {/* guidance */}
                   <div style={{ background:'#fdf8f0', borderTop:'1px solid #ece0c8', padding:'0.6rem 0.75rem 0.7rem' }}>
                     <p style={{ margin:'0 0 0.2rem', fontSize:'0.59rem', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', color:'#a8906a' }}>
-                      Shift Guidance
+                      {tr('safeShift.guidanceLabel')}
                     </p>
                     <p style={{ margin:'0 0 0.2rem', fontSize:'0.75rem', fontWeight:700, color:'#2c2416', lineHeight:1.35 }}>
-                      {block.workRest}
+                      {localizedWorkRest}
                     </p>
                     <p style={{ margin:0, fontSize:'0.65rem', color:'#7a6040', lineHeight:1.45 }}>
-                      {block.guidance}
+                      {localizedGuidance}
                     </p>
                   </div>
                 </div>

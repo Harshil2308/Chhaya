@@ -1,5 +1,6 @@
 import { calculatePersonalizedRisk, WORK_TYPES, EXPOSURES } from '../utils/personalizedRisk';
 import ListenButton from './ListenButton';
+import { useLanguage } from '../context/LanguageContext';
 
 const RISK_THEMES = {
   Low: { bg: '#f0fdf4', border: '#86efac', text: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', icon: '🌿' },
@@ -16,6 +17,8 @@ function PersonalizedRiskCard({
   exposure,
   setExposure
 }) {
+  const { tr } = useLanguage();
+
   if (!baseHeatData) return null;
 
   const result = calculatePersonalizedRisk(baseHeatData.heatIndex, workType, exposure);
@@ -26,19 +29,26 @@ function PersonalizedRiskCard({
 
   const isRiskShifted = result.baseRiskLevel !== result.personalizedRiskLevel;
 
+  const localizedAdvice = tr(`riskAdvice.${result.personalizedRiskLevel}`) || result.personalizedAdvice;
+
+  const netOffsetStr = result.totalOffset >= 0 ? `+${result.totalOffset.toFixed(1)}` : `${result.totalOffset.toFixed(1)}`;
+  const localizedExplanation = isRiskShifted
+    ? `${tr('personalizedRisk.whyShifted')} ${netOffsetStr}°C (${result.adjustedHeatIndex}°C) — ${tr('riskLevel.' + result.baseRiskLevel)} → ${tr('riskLevel.' + result.personalizedRiskLevel)}.`
+    : `${tr('personalizedRisk.whySame')} ${netOffsetStr}°C (${result.adjustedHeatIndex}°C) — ${tr('riskLevel.' + result.personalizedRiskLevel)}.`;
+
   return (
     <div className="chhaya-card p-6 sm:p-7 card-lift mb-5 dash-fade-up border border-orange-100">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4 pb-3 border-b border-orange-100">
         <div>
           <div className="flex items-center gap-2">
             <span className="text-xl">⚡</span>
-            <h3 className="font-extrabold text-gray-900 text-lg">Personalized Thermal Stress</h3>
+            <h3 className="font-extrabold text-gray-900 text-lg">{tr('personalizedRisk.title')}</h3>
             <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>
-              Worker Context
+              {tr('personalizedRisk.badge')}
             </span>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Weather stations report shaded ambient conditions. Physical labor in direct sun creates higher bodily strain.
+            {tr('personalizedRisk.subtitle')}
           </p>
         </div>
       </div>
@@ -48,12 +58,13 @@ function PersonalizedRiskCard({
         {/* Work Type */}
         <div className="bg-orange-50/50 p-3.5 rounded-2xl border border-orange-100">
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-            1. Work Intensity
+            {tr('personalizedRisk.intensityLabel')}
           </label>
           <div className="grid grid-cols-3 gap-2">
             {Object.keys(WORK_TYPES).map((key) => {
               const item = WORK_TYPES[key];
               const isSelected = workType === key;
+              const label = tr(`personalizedRisk.types.${key}.label`) || item.label;
               return (
                 <button
                   key={key}
@@ -65,7 +76,7 @@ function PersonalizedRiskCard({
                       : 'bg-white text-gray-700 border-gray-200 hover:bg-orange-50'
                   }`}
                 >
-                  <div>{item.label}</div>
+                  <div>{label}</div>
                   <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                     {item.offset > 0 ? `+${item.offset}°C` : `${item.offset}°C`}
                   </div>
@@ -74,19 +85,20 @@ function PersonalizedRiskCard({
             })}
           </div>
           <p className="text-[11px] text-gray-500 mt-2 italic">
-            {WORK_TYPES[workType]?.description}
+            {tr(`personalizedRisk.types.${workType}.desc`) || WORK_TYPES[workType]?.description}
           </p>
         </div>
 
         {/* Sun Exposure */}
         <div className="bg-orange-50/50 p-3.5 rounded-2xl border border-orange-100">
           <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-            2. Sun vs. Shade Exposure
+            {tr('personalizedRisk.exposureLabel')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             {Object.keys(EXPOSURES).map((key) => {
               const item = EXPOSURES[key];
               const isSelected = exposure === key;
+              const label = tr(`personalizedRisk.exposures.${key}.label`) || item.label;
               return (
                 <button
                   key={key}
@@ -100,7 +112,7 @@ function PersonalizedRiskCard({
                 >
                   <div className="flex items-center justify-center gap-1.5">
                     <span>{key === 'Sun' ? '☀️' : '🌳'}</span>
-                    <span>{item.label}</span>
+                    <span>{label}</span>
                   </div>
                   <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/80' : 'text-gray-400'}`}>
                     {item.offset > 0 ? `+${item.offset}°C` : `${item.offset}°C`}
@@ -110,7 +122,7 @@ function PersonalizedRiskCard({
             })}
           </div>
           <p className="text-[11px] text-gray-500 mt-2 italic">
-            {EXPOSURES[exposure]?.description}
+            {tr(`personalizedRisk.exposures.${exposure}.desc`) || EXPOSURES[exposure]?.description}
           </p>
         </div>
       </div>
@@ -124,23 +136,23 @@ function PersonalizedRiskCard({
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-bold uppercase tracking-wide text-gray-600">
-              Station Base Risk
+              {tr('personalizedRisk.stationBaseRisk')}
             </span>
             <span
               className="badge"
               style={{ background: baseTheme.badgeBg, color: baseTheme.badgeText, borderColor: baseTheme.border }}
             >
-              {result.baseRiskLevel}
+              {tr(`riskLevel.${result.baseRiskLevel}`) || result.baseRiskLevel}
             </span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-extrabold" style={{ color: baseTheme.text }}>
               {result.baseHeatIndex}°C
             </span>
-            <span className="text-xs text-gray-500 font-medium">Standard Heat Index</span>
+            <span className="text-xs text-gray-500 font-medium">{tr('personalizedRisk.standardHI')}</span>
           </div>
           <p className="text-xs text-gray-600 mt-1.5 leading-snug">
-            Measured in ambient meteorological shade at weather station.
+            {tr('personalizedRisk.stationShadeDesc')}
           </p>
         </div>
 
@@ -151,13 +163,13 @@ function PersonalizedRiskCard({
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-xs font-bold uppercase tracking-wide" style={{ color: persTheme.text }}>
-              Personalized Work Risk
+              {tr('personalizedRisk.personalizedRiskLabel')}
             </span>
             <span
               className="badge"
               style={{ background: persTheme.badgeBg, color: persTheme.badgeText, borderColor: persTheme.border }}
             >
-              {persTheme.icon} {result.personalizedRiskLevel}
+              {persTheme.icon} {tr(`riskLevel.${result.personalizedRiskLevel}`) || result.personalizedRiskLevel}
             </span>
           </div>
           <div className="flex items-baseline gap-2">
@@ -165,15 +177,15 @@ function PersonalizedRiskCard({
               {result.adjustedHeatIndex}°C
             </span>
             <span className="text-xs font-bold" style={{ color: persTheme.text }}>
-              Effective Felt Strain ({result.totalOffset >= 0 ? `+${result.totalOffset.toFixed(1)}°C` : `${result.totalOffset.toFixed(1)}°C`})
+              {tr('personalizedRisk.effectiveStrain')} ({result.totalOffset >= 0 ? `+${result.totalOffset.toFixed(1)}°C` : `${result.totalOffset.toFixed(1)}°C`})
             </span>
           </div>
           <p className="text-xs mt-1.5 font-medium leading-snug" style={{ color: persTheme.text }}>
-            {result.personalizedAdvice}
+            {localizedAdvice}
           </p>
-          {result.personalizedAdvice && (
+          {localizedAdvice && (
             <div className="mt-2">
-              <ListenButton text={result.personalizedAdvice} size="sm" />
+              <ListenButton text={localizedAdvice} size="sm" />
             </div>
           )}
         </div>
@@ -189,8 +201,8 @@ function PersonalizedRiskCard({
       >
         <span className="text-base shrink-0 mt-0.5">{isRiskShifted ? 'ℹ️' : '💡'}</span>
         <div>
-          <span className="font-bold">Why this adjusted: </span>
-          <span>{result.explanation}</span>
+          <span className="font-bold">{tr('personalizedRisk.whyAdjusted')} </span>
+          <span>{localizedExplanation}</span>
         </div>
       </div>
     </div>

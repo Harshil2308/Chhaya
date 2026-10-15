@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import { LanguageSwitcher } from '../components/Navbar';
+import { useLanguage } from '../context/LanguageContext';
 
 const SunIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -23,6 +25,7 @@ function AdminDashboard() {
   const [message,   setMessage]   = useState('');
   const [activeTab, setActiveTab] = useState('centers');
   const navigate = useNavigate();
+  const { tr } = useLanguage();
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -136,6 +139,7 @@ function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <div className="hidden sm:flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2">
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
                 style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
@@ -145,7 +149,7 @@ function AdminDashboard() {
             </div>
             <button onClick={handleLogout}
               className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
-              Logout
+              {tr('common.logout')}
             </button>
           </div>
         </div>

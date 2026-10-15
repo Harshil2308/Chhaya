@@ -37,7 +37,7 @@ const SAFETY_TIPS = [
 
 // SOSModal + Dashboard now consume translations via useLanguage.
 // SOSModal receives tr + lang as props to avoid hook rules issues inside conditional render.
-function SOSModal({ user, onClose, userCoords, tr }) {
+function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [locationText, setLocationText] = useState('');
@@ -56,21 +56,22 @@ function SOSModal({ user, onClose, userCoords, tr }) {
   }, [userCoords, user]);
 
   const savedPhone = user?.emergencyContactPhone;
-  const savedName  = user?.emergencyContactName || 'Emergency Contact';
+  const savedName  = user?.emergencyContactName || tr('sos.savedContact');
 
   // Use saved contact if available, otherwise use manually typed number
   const activePhone = savedPhone || manualPhone.trim();
 
   const buildWhatsAppMessage = () => {
     const loc = mapsLink
-      ? `My GPS location: ${mapsLink}`
-      : `My registered city: ${user?.location || 'unknown'}`;
+      ? `${tr('sos.gps')}: ${mapsLink}`
+      : `${tr('sos.city')}: ${user?.location || 'unknown'}`;
+    const jobName = JOB_LABELS_T?.[user?.occupation] || JOB_LABELS[user?.occupation] || tr('jobLabels.other');
     return encodeURIComponent(
-      `🚨 HEAT EMERGENCY — Chhaya Heat Safety App\n\n` +
-      `👤 Worker: ${user?.name || 'Unknown'}\n` +
-      `🛠️ Job: ${JOB_LABELS[user?.occupation] || 'Outdoor Worker'}\n` +
+      `${tr('sos.messageHeadline')}\n\n` +
+      `${tr('sos.workerLabel')}: ${user?.name || 'Unknown'}\n` +
+      `${tr('sos.jobLabel')}: ${jobName}\n` +
       `📍 ${loc}\n\n` +
-      `⚠️ I am in heat distress. Please send help or call 108 (ambulance) immediately.\n\n` +
+      `${tr('sos.distressWarning')}\n\n` +
       `First Aid: https://www.mohfw.gov.in/heatwave.html`
     );
   };
@@ -396,7 +397,7 @@ function UserDashboard() {
 
       {/* SOS Modal */}
       {showSOS && (
-        <SOSModal user={user} onClose={() => setShowSOS(false)} userCoords={userCoords} tr={tr} />
+        <SOSModal user={user} onClose={() => setShowSOS(false)} userCoords={userCoords} tr={tr} JOB_LABELS_T={JOB_LABELS_T} />
       )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7" style={{ position: 'relative', zIndex: 1 }}>
@@ -414,7 +415,7 @@ function UserDashboard() {
                 <p className="text-gray-500 text-sm mt-1.5">{tr('dashboard.tagline')}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   <span className="badge" style={{ background: '#ffedd5', color: '#9a3412', borderColor: '#fdba74' }}>
-                    👤 {user.role}
+                    👤 {user.role === 'admin' ? 'Admin' : tr('register.roleWorker')}
                   </span>
                   <span className="badge" style={{ background: '#fef9c3', color: '#713f12', borderColor: '#fde68a' }}>
                     🛠️ {JOB_LABELS_T[user.occupation] || JOB_LABELS[user.occupation] || user.occupation || tr('jobLabels.other')}
@@ -440,7 +441,7 @@ function UserDashboard() {
               >
                 <span className="text-2xl">🆘</span>
                 <span className="text-xs tracking-widest uppercase">SOS</span>
-                <span className="text-[10px] font-medium text-red-100">Heat Emergency</span>
+                <span className="text-[10px] font-medium text-red-100">{tr('dashboard.heatEmergency')}</span>
               </button>
             </div>
           </div>
@@ -515,7 +516,7 @@ function UserDashboard() {
               )}
             </div>
             <p className="text-[11px] text-gray-400 mt-4 italic">
-              Standard meteorological heat index in shaded ambient conditions.
+              {tr('dashboard.standardAmbientShade')}
             </p>
           </div>
 
@@ -531,13 +532,13 @@ function UserDashboard() {
                   <div>
                     <h3 className="text-base font-extrabold text-gray-900 leading-tight">{tr('dashboard.yourRisk')}</h3>
                     <p className="text-xs" style={{ color: riskCfg.textColor, opacity: 0.85 }}>
-                      {tr('dashboard.personalizedFor')} {JOB_LABELS_T[user.occupation] || JOB_LABELS[user.occupation] || user.occupation || 'Your Job'}
+                      {tr('dashboard.personalizedFor')} {JOB_LABELS_T[user.occupation] || JOB_LABELS[user.occupation] || user.occupation || tr('jobLabels.other')}
                     </p>
                   </div>
                 </div>
                 {heatData?.jobPoints != null && (
                   <span className="badge" style={{ background: riskCfg.badgeBg, color: riskCfg.badgeText, borderColor: riskCfg.border }}>
-                    {heatData.jobPoints > 0 ? `+${heatData.jobPoints}°C Work Load` : 'Baseline'}
+                    {heatData.jobPoints > 0 ? `+${heatData.jobPoints}°C ${tr('dashboard.workLoad')}` : tr('dashboard.baseline')}
                   </span>
                 )}
               </div>
@@ -548,30 +549,31 @@ function UserDashboard() {
                 <>
                   <div className="flex items-baseline gap-3 my-3">
                     <span className="text-4xl sm:text-5xl font-extrabold leading-none" style={{ color: riskCfg.textColor }}>
-                      {displayRiskLevel}
+                      {tr(`riskLevel.${displayRiskLevel}`) || displayRiskLevel}
                     </span>
                     <span className="text-sm font-bold" style={{ color: riskCfg.textColor }}>
-                      ({heatData.personalHeatIndex != null ? `${heatData.personalHeatIndex}°C Personal HI` : `${heatData.heatIndex}°C`})
+                      ({heatData.personalHeatIndex != null ? `${heatData.personalHeatIndex}°C ${tr('dashboard.personalHI')}` : `${heatData.heatIndex}°C`})
                     </span>
                   </div>
                   <div className="my-3">
                     <div className="flex justify-between text-[11px] mb-1 font-semibold opacity-75" style={{ color: riskCfg.textColor }}>
-                      <span>Low</span><span>Moderate</span><span>High</span><span>Extreme</span>
+                      <span>{tr('riskLevel.Low')}</span>
+                      <span>{tr('riskLevel.Moderate')}</span>
+                      <span>{tr('riskLevel.High')}</span>
+                      <span>{tr('riskLevel.Extreme')}</span>
                     </div>
                     <div className="h-2.5 bg-black/10 rounded-full overflow-hidden">
                       <div className="h-full rounded-full transition-all duration-700"
                         style={{ width: riskBarPct, background: riskCfg.barColor }} />
                     </div>
                   </div>
-                  {heatData.reason && (
-                    <div className="bg-white/70 backdrop-blur-sm rounded-xl p-2.5 my-2.5 border border-white/80 text-xs text-gray-800">
-                      <span className="font-bold text-gray-900">{tr('dashboard.whyItChanged')} </span>
-                      <span>{heatData.reason}</span>
-                    </div>
-                  )}
+                  <div className="bg-white/70 backdrop-blur-sm rounded-xl p-2.5 my-2.5 border border-white/80 text-xs text-gray-800">
+                    <span className="font-bold text-gray-900">{tr('dashboard.whyItChanged')} </span>
+                    <span>{tr('jobDescriptions.' + (user.occupation || 'other')) || heatData.reason}</span>
+                  </div>
                   <div className="mt-2 text-xs leading-relaxed font-medium" style={{ color: riskCfg.textColor }}>
                     <span className="font-bold uppercase tracking-wide block mb-1">{tr('dashboard.practicalShiftGuidance')}</span>
-                    <span>{heatData.personalAdvice || heatData.advice}</span>
+                    <span>{translations?.jobAdvice?.[displayRiskLevel]?.[user.occupation] || translations?.jobAdvice?.[displayRiskLevel]?.default || heatData.personalAdvice || heatData.advice}</span>
                   </div>
                 </>
               ) : (
@@ -642,7 +644,7 @@ function UserDashboard() {
         <div className="flex justify-between items-center mb-5">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-gray-500">
-              Reported Hotspots Nearby: <strong className="text-red-500">{hotspots.length}</strong>
+              {tr('dashboard.hotspotNearby')} <strong className="text-red-500">{hotspots.length}</strong>
             </span>
           </div>
           <button
@@ -696,13 +698,13 @@ function UserDashboard() {
           {/* Recent Hotspots */}
           <div className="chhaya-card card-lift p-6 dash-fade-up">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-gray-900">🔴 Recent Hotspot Reports</h3>
-              <span className="badge badge-pending">{hotspots.length} reports</span>
+              <h3 className="font-bold text-gray-900">{tr('dashboard.recentHotspots')}</h3>
+              <span className="badge badge-pending">{hotspots.length} {tr('dashboard.reports')}</span>
             </div>
             {hotspots.length === 0 ? (
               <div className="text-center py-8">
                 <span className="text-4xl">📭</span>
-                <p className="text-gray-400 text-sm mt-2">No reports in your area yet.</p>
+                <p className="text-gray-400 text-sm mt-2">{tr('dashboard.noReports')}</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -715,7 +717,7 @@ function UserDashboard() {
                       <p className="text-xs text-gray-400">{spot.city}</p>
                     </div>
                     <span className={`badge ${spot.status === 'Pending' ? 'badge-pending' : spot.status === 'Verified' ? 'badge-verified' : 'badge-resolved'}`}>
-                      {spot.status}
+                      {tr('hotspot.status.' + spot.status) || spot.status}
                     </span>
                   </div>
                 ))}
@@ -726,7 +728,7 @@ function UserDashboard() {
           {/* Practical Safety Tips */}
           <div className="rounded-3xl p-6 card-lift dash-fade-up border border-blue-100"
             style={{ background: 'linear-gradient(135deg,#eff6ff 0%,#dbeafe 100%)', boxShadow: '0 4px 18px #2563eb12' }}>
-            <h3 className="font-bold text-blue-900 mb-4">🛡️ Practical Worker Heat Safety</h3>
+            <h3 className="font-bold text-blue-900 mb-4">{tr('dashboard.workerHeatSafety')}</h3>
             <ul className="space-y-2.5">
               {SAFETY_TIPS_T.map((item, i) => (
                 <li key={i}
@@ -744,18 +746,18 @@ function UserDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-gray-900 text-lg">🌳 Nearest Cooling Centers</h3>
-                <span className="badge badge-resolved">{sortedCenters.length} available</span>
+                <h3 className="font-bold text-gray-900 text-lg">{tr('dashboard.nearestCooling')}</h3>
+                <span className="badge badge-resolved">{sortedCenters.length} {tr('dashboard.available')}</span>
               </div>
               <p className="text-xs text-gray-500 mt-1">
                 {userCoords
-                  ? '📍 Real distances calculated via browser geolocation (sorted nearest first).'
-                  : '📍 Geolocation off or denied. Showing registered centers for your city.'}
+                  ? tr('dashboard.gpsRealDistances')
+                  : tr('dashboard.gpsOff')}
               </p>
             </div>
             {userCoords && (
               <span className="badge" style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}>
-                📍 GPS Active
+                {tr('dashboard.gpsActive')}
               </span>
             )}
           </div>
@@ -763,7 +765,7 @@ function UserDashboard() {
           {sortedCenters.length === 0 ? (
             <div className="text-center py-8">
               <span className="text-4xl">🏢</span>
-              <p className="text-gray-400 text-sm mt-3">No cooling centers found for your city yet.</p>
+              <p className="text-gray-400 text-sm mt-3">{tr('dashboard.noCoolingCenters')}</p>
             </div>
           ) : (
             <>
@@ -794,14 +796,14 @@ function UserDashboard() {
                       <div className="flex items-center justify-between gap-2 mt-3 pt-3 border-t border-gray-100">
                         {center.distanceKm != null ? (
                           <span className="text-xs font-extrabold text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200">
-                            📍 {center.distanceKm} km away
+                            📍 {center.distanceKm} {tr('dashboard.kmAway')}
                           </span>
                         ) : (
                           <span className="text-xs text-gray-400">{center.type}</span>
                         )}
                         <a href={directionsUrl} target="_blank" rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline">
-                          <span>🧭 Get Directions</span>
+                          <span>🧭 {tr('dashboard.getDirections')}</span>
                           <span>→</span>
                         </a>
                       </div>

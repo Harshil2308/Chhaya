@@ -19,10 +19,10 @@ const LANG_OPTIONS = [
   { value: 'gu', label: 'ગુજ', full: 'ગુજરાતી' },
 ];
 
-function LanguageSwitcher() {
+export function LanguageSwitcher({ className = '' }) {
   const { lang, setLang } = useLanguage();
   return (
-    <div className="flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-xl px-1.5 py-1">
+    <div className={`flex items-center gap-1 bg-orange-50 border border-orange-100 rounded-xl px-1.5 py-1 ${className}`}>
       {LANG_OPTIONS.map((opt) => (
         <button
           key={opt.value}
@@ -46,6 +46,7 @@ function LanguageSwitcher() {
 function Navbar({ user }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { tr } = useLanguage();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -83,13 +84,15 @@ function Navbar({ user }) {
                   </div>
                   <div className="leading-tight">
                     <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                    <p className="text-xs text-orange-500 capitalize font-medium">{user.role}</p>
+                    <p className="text-xs text-orange-500 capitalize font-medium">
+                      {user.role === 'admin' ? 'Admin' : tr('register.roleWorker')}
+                    </p>
                   </div>
                 </div>
                 <button onClick={handleLogout}
                   className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50
                              hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
-                  Logout
+                  {tr('common.logout')}
                 </button>
               </>
             )}
@@ -119,13 +122,15 @@ function Navbar({ user }) {
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                <p className="text-xs text-orange-500 capitalize">{user.role}</p>
+                <p className="text-xs text-orange-500 capitalize">
+                  {user.role === 'admin' ? 'Admin' : tr('register.roleWorker')}
+                </p>
               </div>
             </div>
             <button onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold
                          bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white transition-all duration-200">
-              Logout
+              {tr('common.logout')}
             </button>
           </div>
         )}

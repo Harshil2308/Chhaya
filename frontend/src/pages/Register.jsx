@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 import SunPanel from '../components/SunPanel';
+import { LanguageSwitcher } from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
 
 const Spinner = () => <span className="spinner" />;
 
 function Register() {
+  const { lang, setLang, tr } = useLanguage();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -16,33 +18,38 @@ function Register() {
     location: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
-    language: 'en'
+    language: lang || 'en'
   });
   const [error,   setError]   = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { tr } = useLanguage();
 
-  const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'language') {
+      setLang(value);
+    }
+  };
 
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!/^[6-9]\d{9}$/.test(formData.phone)) {
-      setError('Please enter a valid 10-digit Indian mobile number');
+      setError(tr('register.phoneInvalid'));
       return;
     }
     if (formData.emergencyContactPhone && !/^[6-9]\d{9}$/.test(formData.emergencyContactPhone)) {
-      setError('Emergency contact phone must be a valid 10-digit Indian mobile number');
+      setError(tr('register.emergencyContactPhoneInvalid'));
       return;
     }
     setError(''); setSuccess(''); setLoading(true);
     try {
       await API.post('/auth/register', formData);
-      setSuccess('Account created! Redirecting to login...');
+      setSuccess(tr('register.registerSuccess'));
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || tr('register.registerFailed'));
     } finally {
       setLoading(false);
     }
@@ -53,9 +60,14 @@ function Register() {
 
       {/* ── LEFT: Form ── */}
       <div
-        className="flex flex-1 flex-col items-center justify-center px-6 py-10 lg:px-14 overflow-y-auto"
+        className="flex flex-1 flex-col items-center justify-center px-6 py-10 lg:px-14 overflow-y-auto relative"
         style={{ background: 'linear-gradient(145deg, #fdf0e0 0%, #fef6ec 45%, #fff8f2 100%)' }}
       >
+        {/* Language switcher top right */}
+        <div className="absolute top-5 right-5 sm:top-6 sm:right-6">
+          <LanguageSwitcher />
+        </div>
+
         <div className="w-full max-w-md">
 
           {/* Brand mark */}
@@ -75,10 +87,10 @@ function Register() {
           </div>
 
           <h1 className="text-[1.7rem] font-extrabold leading-tight mb-1" style={{ color: '#2a1200' }}>
-            Create your account
+            {tr('register.title')}
           </h1>
           <p className="text-sm mb-6" style={{ color: '#a0674a' }}>
-            Join thousands of protected outdoor workers
+            {tr('register.subtitle')}
           </p>
 
           {error   && <div className="alert alert-error   mb-4">⚠️ {error}</div>}
@@ -88,52 +100,66 @@ function Register() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Full Name</label>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                  {tr('register.fullName')}
+                </label>
                 <input name="name" type="text" value={formData.name} onChange={handleChange}
-                  required placeholder="Your full name" className="chhaya-input" />
+                  required placeholder={tr('register.fullNamePlaceholder')} className="chhaya-input" />
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Phone Number</label>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                  {tr('register.phone')}
+                </label>
                 <input name="phone" type="text" value={formData.phone} onChange={handleChange}
-                  required placeholder="9876543210" className="chhaya-input" />
+                  required placeholder={tr('register.phonePlaceholder')} className="chhaya-input" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Password</label>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                {tr('register.password')}
+              </label>
               <input name="password" type="password" value={formData.password} onChange={handleChange}
-                required placeholder="Create a strong password" className="chhaya-input" />
+                required placeholder={tr('register.passwordPlaceholder')} className="chhaya-input" />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Role</label>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                  {tr('register.role')}
+                </label>
                 <select name="role" value={formData.role} onChange={handleChange} className="chhaya-input">
-                  <option value="worker">Worker</option>
-                  <option value="manager">Manager</option>
+                  <option value="worker">{tr('register.roleWorker')}</option>
+                  <option value="manager">{tr('register.roleManager')}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>Occupation</label>
+                <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                  {tr('register.occupation')}
+                </label>
                 <select name="occupation" value={formData.occupation} onChange={handleChange} className="chhaya-input">
-                  <option value="construction">Construction Worker</option>
-                  <option value="farmer">Farmer</option>
-                  <option value="delivery">Delivery Person</option>
-                  <option value="vendor">Street Vendor</option>
-                  <option value="other">Other</option>
+                  <option value="construction">{tr('register.occupations.construction')}</option>
+                  <option value="farmer">{tr('register.occupations.farmer')}</option>
+                  <option value="delivery">{tr('register.occupations.delivery')}</option>
+                  <option value="vendor">{tr('register.occupations.vendor')}</option>
+                  <option value="other">{tr('register.occupations.other')}</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>{tr('register.location')}</label>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                {tr('register.location')}
+              </label>
               <input name="location" type="text" value={formData.location} onChange={handleChange}
                 placeholder={tr('register.locationPlaceholder')} className="chhaya-input" />
             </div>
 
             {/* Preferred Language */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>{tr('register.preferredLanguage')}</label>
+              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                {tr('register.preferredLanguage')}
+              </label>
               <select name="language" value={formData.language} onChange={handleChange} className="chhaya-input">
                 <option value="en">English</option>
                 <option value="hi">हिन्दी (Hindi)</option>
@@ -142,19 +168,19 @@ function Register() {
             </div>
 
             <button type="submit" disabled={loading} className="chhaya-btn-primary w-full py-3.5 mt-1">
-              {loading ? <><Spinner /> Creating account...</> : 'Create Account'}
+              {loading ? <><Spinner /> {tr('register.creatingAccount')}</> : tr('register.createAccount')}
             </button>
           </form>
 
           <p className="text-center text-sm mt-6" style={{ color: '#8a5a3a' }}>
-            Already have an account?{' '}
+            {tr('register.alreadyHaveAccount')}{' '}
             <Link to="/login" className="font-semibold hover:underline" style={{ color: '#c05000' }}>
-              Sign in
+              {tr('register.signIn')}
             </Link>
           </p>
 
           <p className="text-center text-xs mt-6" style={{ color: '#c08060' }}>
-            Protecting outdoor workers from extreme heat
+            {tr('register.footer')}
           </p>
         </div>
       </div>
