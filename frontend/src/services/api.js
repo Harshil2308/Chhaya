@@ -13,4 +13,22 @@ API.interceptors.request.use((req) => {
   return req;
 });
 
-export default API;
+// ── Assistant (Heat Helper) ──────────────────────────────────────────────────
+
+/**
+ * Send a message to the heat-safety assistant.
+ * @param {string} message
+ * @param {string} language - 'en' | 'hi' | 'gu'
+ * @returns {Promise<{ reply: string, emergency: boolean, disclaimer: string }>}
+ */
+export const askAssistant = (message, language) =>
+  API.post('/assistant', { message, language }).then((r) => r.data);
+
+/**
+ * Check if the assistant feature is enabled on the server.
+ * @returns {Promise<{ enabled: boolean }>}
+ */
+export const getAssistantStatus = () =>
+  API.get('/assistant/status').then((r) => r.data);
+
+export default API;

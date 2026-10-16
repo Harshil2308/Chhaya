@@ -7,6 +7,7 @@ import PersonalizedRiskCard from '../components/PersonalizedRiskCard';
 import SafeShiftPlanner from '../components/SafeShiftPlanner';
 import { calculateHaversineDistance } from '../utils/geoDistance';
 import { useLanguage } from '../context/LanguageContext';
+import HeatHelper from '../components/HeatHelper';
 
 const RISK_CONFIG = {
   Low: { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
@@ -816,6 +817,10 @@ function UserDashboard() {
         </div>
 
       </div>
+
+      {/* ── Heat Safety Assistant (floating) ── */}
+      <HeatHelper lang={lang} onOpenSOS={() => setShowSOS(true)} />
+
     </div>
   );
 }
