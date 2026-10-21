@@ -151,8 +151,28 @@ function Register() {
               <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
                 {tr('register.location')}
               </label>
-              <input name="location" type="text" value={formData.location} onChange={handleChange}
+              <input name="location" type="text" list="city-options" value={formData.location} onChange={handleChange}
                 placeholder={tr('register.locationPlaceholder')} className="chhaya-input" />
+              <datalist id="city-options">
+                <option value="Ahmedabad" />
+                <option value="Surat" />
+                <option value="Vadodara" />
+                <option value="Rajkot" />
+                <option value="Bhavnagar" />
+                <option value="Jamnagar" />
+                <option value="Gandhinagar" />
+                <option value="Junagadh" />
+                <option value="Anand" />
+                <option value="Navsari" />
+                <option value="Morbi" />
+                <option value="Bharuch" />
+                <option value="Mehsana" />
+                <option value="Bhuj" />
+                <option value="Porbandar" />
+                <option value="Vapi" />
+                <option value="Mumbai" />
+                <option value="Delhi" />
+              </datalist>
             </div>
 
             {/* Preferred Language */}

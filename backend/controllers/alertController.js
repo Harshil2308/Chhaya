@@ -38,6 +38,36 @@ const getWorkRestGuidance = (riskLevel) => {
   }
 };
 
+const DEFAULT_CITY = 'Ahmedabad';
+
+const fetchWeatherWithFallback = async (city, apiKey) => {
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
+    return await axios.get(url);
+  } catch (err) {
+    if (err.response?.status === 404 && city.toLowerCase() !== DEFAULT_CITY.toLowerCase()) {
+      console.warn(`[Weather API] City "${city}" not found (404: ${err.response?.data?.message || 'city not found'}). Falling back to ${DEFAULT_CITY}.`);
+      const fallbackUrl = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(DEFAULT_CITY)}&units=metric&appid=${apiKey}`;
+      return await axios.get(fallbackUrl);
+    }
+    throw err;
+  }
+};
+
+const fetchForecastWithFallback = async (city, apiKey) => {
+  try {
+    const url = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
+    return await axios.get(url);
+  } catch (err) {
+    if (err.response?.status === 404 && city.toLowerCase() !== DEFAULT_CITY.toLowerCase()) {
+      console.warn(`[Forecast API] City "${city}" not found (404: ${err.response?.data?.message || 'city not found'}). Falling back to ${DEFAULT_CITY}.`);
+      const fallbackUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(DEFAULT_CITY)}&units=metric&appid=${apiKey}`;
+      return await axios.get(fallbackUrl);
+    }
+    throw err;
+  }
+};
+
 const getHeatAlert = async (req, res) => {
   try {
     const { city, job } = req.query;
@@ -47,9 +77,7 @@ const getHeatAlert = async (req, res) => {
     }
 
     const apiKey = process.env.WEATHER_API_KEY;
-    const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
-
-    const response = await axios.get(url);
+    const response = await fetchWeatherWithFallback(city, apiKey);
     const data = response.data;
 
     const temp = data.main.temp;
@@ -83,18 +111,17 @@ const getHeatAlert = async (req, res) => {
 
     res.json(payload);
   } catch (error) {
-    console.log(error.message);
+    console.error(`[Weather API] Failed to fetch weather data for "${req.query?.city}":`, error.response?.data || error.message);
     res.status(500).json({ message: 'Failed to fetch weather data' });
   }
 };
 
 const getForecastAlert = async (req, res) => {
-  const city = req.query.city || 'Ahmedabad';
+  const city = req.query.city || DEFAULT_CITY;
   const apiKey = process.env.WEATHER_API_KEY;
 
   try {
-    const url = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`;
-    const response = await axios.get(url);
+    const response = await fetchForecastWithFallback(city, apiKey);
     const list = response.data.list || [];
 
     // Next 8 blocks = 24-hour forward timeline in 3-hour increments
@@ -143,7 +170,7 @@ const getForecastAlert = async (req, res) => {
       saferWindows
     });
   } catch (error) {
-    console.error('Forecast fetch failed, using fallback:', error.message);
+    console.error(`[Forecast API] Fetch failed for "${city}":`, error.response?.data || error.message);
     res.json({
       fallback: true,
       city,
