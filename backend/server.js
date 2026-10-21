@@ -19,6 +19,8 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/cooling-centers', require('./routes/coolingCenterRoutes'));
 app.use('/api/speak', require('./routes/speakRoutes'));
 app.use('/api/assistant', require('./routes/assistantRoutes'));
+app.use('/api/teams', require('./routes/teamRoutes'));
+app.use('/api/checkins', require('./routes/checkInRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Chhaya Backend is Running');

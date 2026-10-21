@@ -123,22 +123,33 @@ git clone https://github.com/Harshil2308/Chhaya.git
 cd Chhaya
 ```
 
-### 2. Install Dependencies
-Install packages for both backend and frontend:
+### 2. Install All Dependencies (Single Command or 1-Click)
 
-* **Backend Installation:**
+You do **not** need to go into each folder and download things separately! Choose any of the following:
+
+* **⚡ Option A: Single Command (Terminal)**
+  From the root `Chhaya` folder:
   ```powershell
-  cd backend
-  npm install
-  cd ..
+  npm run install:all
+  ```
+  *(This will automatically download all libraries for both backend and frontend in one go!)*
+
+* **🖱️ Option B: Windows 1-Click Installer**
+  Double-click `setup.bat` or run in terminal:
+  ```powershell
+  .\setup.bat
   ```
 
-* **Frontend Installation:**
-  ```powershell
-  cd frontend
-  npm install
-  cd ..
+* **🐧 Option C: macOS / Linux / Git Bash**
+  Run:
+  ```bash
+  chmod +x setup.sh && ./setup.sh
   ```
+
+*(Manual fallback: you can still run `cd backend && npm install` and `cd frontend && npm install` separately if desired).*
+
+> 📋 All required dependencies and versions are also listed in [requirements.txt](file:///c:/Users/harsh/Desktop/Chhaya/requirements.txt).
+
 
 ---
 

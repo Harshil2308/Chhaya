@@ -256,10 +256,10 @@ export default function HeatHelper({ lang = 'en', onOpenSOS }) {
     if (typeof onOpenSOS === 'function') onOpenSOS();
   };
 
-  // Hide entirely if disabled
+  // Hide entirely only when server confirms the feature is disabled
   if (enabled === false) return null;
-  // While checking, still render the button but keep it dormant
-  if (enabled === null) return null;
+  // While status check is in-flight (null), show the button — it will handle
+  // errors gracefully inside sendMessage if the feature is actually unavailable
 
   return (
     <>

@@ -1,25 +1,32 @@
 {
   "name": "chhaya",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Chhaya - Heatwave & Cooling Center Management System",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "setup": "npm run install:all",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "install:backend": "npm --prefix backend install",
+    "install:frontend": "npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "start": "npm --prefix backend start"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Harshil2308/Chhaya.git"
   },
-  "keywords": [],
+  "keywords": [
+    "heatwave",
+    "cooling-centers",
+    "react",
+    "express",
+    "mongodb"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/Harshil2308/Chhaya/issues"
   },
-  "homepage": "https://github.com/Harshil2308/Chhaya#readme",
-  "dependencies": {
-    "axios": "^1.19.0",
-    "react-router-dom": "^7.11.0"
-  }
+  "homepage": "https://github.com/Harshil2308/Chhaya#readme"
 }

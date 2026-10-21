@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import MapView from '../components/MapView';
 import PersonalizedRiskCard from '../components/PersonalizedRiskCard';
 import SafeShiftPlanner from '../components/SafeShiftPlanner';
-import { calculateHaversineDistance } from '../utils/geoDistance';
+import { calculateHaversineDistance, getCityCoordinates } from '../utils/geoDistance';
 import { useLanguage } from '../context/LanguageContext';
 import HeatHelper from '../components/HeatHelper';
 
@@ -43,194 +43,411 @@ function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
   const [sent, setSent] = useState(false);
   const [locationText, setLocationText] = useState('');
   const [mapsLink, setMapsLink] = useState('');
-  // Allow user to type a number manually if no contact is saved
   const [manualPhone, setManualPhone] = useState('');
+  const [gpsStatus, setGpsStatus] = useState('idle');
 
+  // Fallback coordinates helper based on city
+  const getCityFallbackCoords = () => getCityCoordinates(user?.location);
+
+  // Synchronise location: always ensure a valid Google Maps link exists
   useEffect(() => {
-    if (userCoords) {
+    if (
+      userCoords &&
+      typeof userCoords.lat === 'number' &&
+      typeof userCoords.lng === 'number' &&
+      !isNaN(userCoords.lat) &&
+      !isNaN(userCoords.lng)
+    ) {
       setMapsLink(`https://maps.google.com/?q=${userCoords.lat},${userCoords.lng}`);
       setLocationText(`${userCoords.lat.toFixed(5)}, ${userCoords.lng.toFixed(5)}`);
     } else {
-      setLocationText(user?.location || 'Location unavailable');
-      setMapsLink('');
+      const fallback = getCityFallbackCoords();
+      setMapsLink(`https://maps.google.com/?q=${fallback.lat},${fallback.lng}`);
+      setLocationText(`${user?.location || 'Live Location'} (${fallback.lat.toFixed(4)}, ${fallback.lng.toFixed(4)})`);
     }
   }, [userCoords, user]);
 
   const savedPhone = user?.emergencyContactPhone;
-  const savedName  = user?.emergencyContactName || tr('sos.savedContact');
+  const savedName = user?.emergencyContactName || tr('sos.savedContact');
 
-  // Use saved contact if available, otherwise use manually typed number
-  const activePhone = savedPhone || manualPhone.trim();
-
-  const buildWhatsAppMessage = () => {
-    const loc = mapsLink
-      ? `${tr('sos.gps')}: ${mapsLink}`
-      : `${tr('sos.city')}: ${user?.location || 'unknown'}`;
-    const jobName = JOB_LABELS_T?.[user?.occupation] || JOB_LABELS[user?.occupation] || tr('jobLabels.other');
-    return encodeURIComponent(
-      `${tr('sos.messageHeadline')}\n\n` +
-      `${tr('sos.workerLabel')}: ${user?.name || 'Unknown'}\n` +
-      `${tr('sos.jobLabel')}: ${jobName}\n` +
-      `📍 ${loc}\n\n` +
-      `${tr('sos.distressWarning')}\n\n` +
-      `First Aid: https://www.mohfw.gov.in/heatwave.html`
-    );
+  // Extract clean 10-digit Indian phone number
+  const get10DigitPhone = (raw) => {
+    if (!raw) return '';
+    let digits = raw.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+    return digits.slice(0, 10);
   };
 
-  // Use window.open for tel: so desktop OS picks it up; pure href on mobile
+  const rawActivePhone = (savedPhone || manualPhone || '').trim();
+  const normalizedPhone = get10DigitPhone(rawActivePhone);
+  const isPhoneValid = normalizedPhone.length === 10;
+
+  // Build formatted WhatsApp message with guaranteed Google Maps live location link
+  const buildWhatsAppMessage = (resolvedLink) => {
+    const jobName =
+      JOB_LABELS_T?.[user?.occupation] ||
+      JOB_LABELS[user?.occupation] ||
+      tr('jobLabels.other') ||
+      'Outdoor Worker';
+    const headline = tr('sos.messageHeadline') || '🚨 HEAT EMERGENCY — Chhaya Heat Safety App';
+    const distress =
+      tr('sos.distressWarning') ||
+      '⚠️ I am in heat distress. Please send help or call 108 (ambulance) immediately.';
+    const workerLabel = tr('sos.workerLabel') || '👤 Worker';
+    const jobLabel = tr('sos.jobLabel') || '🛠️ Job';
+
+    // Live location link is always included
+    const locationLine = `📍 My location: ${resolvedLink}`;
+
+    const lines = [
+      `${headline}`,
+      'I need help. Heat emergency.',
+      '',
+      `${workerLabel}: ${user?.name || 'Unknown'}`,
+      `${jobLabel}: ${jobName}`,
+      locationLine,
+      '',
+      distress,
+      '',
+      'First Aid: https://www.mohfw.gov.in/heatwave.html'
+    ];
+
+    return encodeURIComponent(lines.join('\n'));
+  };
+
   const callNumber = (num) => {
     window.open(`tel:${num}`, '_self');
   };
 
-  const handleWhatsApp = () => {
-    if (!activePhone) return;
+  // Handle WhatsApp SOS with multi-tier reliable location acquisition
+  const handleWhatsApp = async () => {
+    if (!isPhoneValid || sending) return;
+
     setSending(true);
-    const digits = activePhone.replace(/\D/g, '');
-    const url = `https://wa.me/91${digits}?text=${buildWhatsAppMessage()}`;
-    setTimeout(() => {
+    setSent(false);
+    setGpsStatus('locating');
+
+    // Acquire best possible live coordinates
+    const acquireLiveCoordinates = async () => {
+      // 1. Try browser live GPS (with fast fallback to standard accuracy)
+      if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+        try {
+          const pos = await new Promise((resolve, reject) => {
+            let settled = false;
+            const timer = setTimeout(() => {
+              if (!settled) {
+                settled = true;
+                reject(new Error('GPS timeout'));
+              }
+            }, 5000);
+
+            navigator.geolocation.getCurrentPosition(
+              (p) => {
+                if (!settled) {
+                  settled = true;
+                  clearTimeout(timer);
+                  resolve(p);
+                }
+              },
+              () => {
+                // Low accuracy/network fallback (succeeds via WiFi on laptops without GPS hardware)
+                navigator.geolocation.getCurrentPosition(
+                  (p2) => {
+                    if (!settled) {
+                      settled = true;
+                      clearTimeout(timer);
+                      resolve(p2);
+                    }
+                  },
+                  (err2) => {
+                    if (!settled) {
+                      settled = true;
+                      clearTimeout(timer);
+                      reject(err2);
+                    }
+                  },
+                  { enableHighAccuracy: false, timeout: 3500, maximumAge: 300000 }
+                );
+              },
+              { enableHighAccuracy: true, timeout: 3000, maximumAge: 60000 }
+            );
+          });
+
+          const lat = pos?.coords?.latitude;
+          const lng = pos?.coords?.longitude;
+          if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
+            return { lat, lng };
+          }
+        } catch (e) {
+          console.warn('Live browser GPS unavailable:', e?.message || e);
+        }
+      }
+
+      // 2. Check existing userCoords from dashboard
+      if (
+        userCoords &&
+        typeof userCoords.lat === 'number' &&
+        typeof userCoords.lng === 'number' &&
+        !isNaN(userCoords.lat) &&
+        !isNaN(userCoords.lng)
+      ) {
+        return { lat: userCoords.lat, lng: userCoords.lng };
+      }
+
+      // 3. Fallback to city coordinates so Maps link is ALWAYS present
+      return getCityFallbackCoords();
+    };
+
+    try {
+      const coords = await acquireLiveCoordinates();
+      const freshLink = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
+
+      setMapsLink(freshLink);
+      setLocationText(`${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`);
+      setGpsStatus('found');
+
+      const url = `https://wa.me/91${normalizedPhone}?text=${buildWhatsAppMessage(freshLink)}`;
+
+      setTimeout(() => {
+        setSending(false);
+        setSent(true);
+        window.open(url, '_blank');
+      }, 400);
+    } catch (err) {
+      console.error('WhatsApp SOS handler fallback:', err);
+      const fallback = getCityFallbackCoords();
+      const fallbackLink = `https://maps.google.com/?q=${fallback.lat},${fallback.lng}`;
+      const url = `https://wa.me/91${normalizedPhone}?text=${buildWhatsAppMessage(fallbackLink)}`;
       setSending(false);
       setSent(true);
       window.open(url, '_blank');
-    }, 500);
+    }
   };
 
   return (
+    <div
+      id="sos-modal-overlay"
+      className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <div
-        id="sos-modal-overlay"
-        className="fixed inset-0 flex items-center justify-center z-50 p-4"
-        style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+        className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+        style={{
+          background: '#fff',
+          border: '3px solid #dc2626',
+          maxHeight: '95vh',
+          overflowY: 'auto'
+        }}
       >
+        {/* Header */}
         <div
-          className="w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
-          style={{ background: '#fff', border: '3px solid #dc2626', maxHeight: '95vh', overflowY: 'auto' }}
+          className="p-5 text-center"
+          style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)' }}
         >
-          {/* Header */}
-          <div className="p-5 text-center" style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)' }}>
-            <div className="text-4xl mb-2">🚨</div>
-            <h2 className="text-xl font-extrabold text-white">{tr('sos.title')}</h2>
-            <p className="text-red-100 text-xs mt-1">{tr('sos.subtitle')}</p>
+          <div className="text-4xl mb-2">🚨</div>
+          <h2 className="text-xl font-extrabold text-white">{tr('sos.title')}</h2>
+          <p className="text-red-100 text-xs mt-1">{tr('sos.subtitle')}</p>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Location Info with live Google Maps link */}
+          <div
+            className="rounded-2xl p-3.5"
+            style={{ background: '#f0fdf4', border: '1px solid #86efac' }}
+          >
+            <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">
+              {tr('sos.yourLocation')}
+            </p>
+            <p className="text-sm font-semibold text-green-900">
+              {tr('sos.gps')}: {locationText}
+            </p>
+            {mapsLink && (
+              <a
+                href={mapsLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-green-700 underline mt-1 flex items-center gap-1 font-semibold hover:text-green-800"
+              >
+                <span>📍 View on Google Maps</span>
+                <span>→</span>
+              </a>
+            )}
           </div>
 
-          <div className="p-5 space-y-4">
-
-            {/* Location Info */}
-            <div className="rounded-2xl p-3.5" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-              <p className="text-xs font-bold text-green-700 uppercase tracking-wide mb-1">{tr('sos.yourLocation')}</p>
-              <p className="text-sm font-semibold text-green-900">
-                {mapsLink ? `${tr('sos.gps')}: ${locationText}` : `${tr('sos.city')}: ${locationText}`}
+          {/* Emergency Contact */}
+          {savedPhone ? (
+            <div
+              className="rounded-2xl p-3.5"
+              style={{ background: '#fff7ed', border: '1px solid #fdba74' }}
+            >
+              <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">
+                {tr('sos.savedContact')}
               </p>
-              {mapsLink && (
-                <a href={mapsLink} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-green-700 underline mt-0.5 block">
-                  {tr('sos.openMaps')}
-                </a>
-              )}
+              <p className="text-sm font-extrabold text-gray-900">{savedName}</p>
+              <p className="text-sm text-gray-600">+91 {normalizedPhone || savedPhone}</p>
             </div>
-
-            {/* Emergency Contact — show saved or manual input */}
-            {savedPhone ? (
-              <div className="rounded-2xl p-3.5" style={{ background: '#fff7ed', border: '1px solid #fdba74' }}>
-                <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">{tr('sos.savedContact')}</p>
-                <p className="text-sm font-extrabold text-gray-900">{savedName}</p>
-                <p className="text-sm text-gray-600">{savedPhone}</p>
-              </div>
-            ) : (
-              <div className="rounded-2xl p-3.5" style={{ background: '#fef9c3', border: '1px solid #fde68a' }}>
-                <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">
-                  {tr('sos.enterContactLabel')}
-                </p>
+          ) : (
+            <div
+              className="rounded-2xl p-3.5"
+              style={{ background: '#fef9c3', border: '1px solid #fde68a' }}
+            >
+              <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">
+                {tr('sos.enterContactLabel')}
+              </p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-gray-600 bg-gray-100 px-2.5 py-2 rounded-xl">
+                  +91
+                </span>
                 <input
                   id="sos-manual-phone-input"
                   type="tel"
                   inputMode="numeric"
                   maxLength={10}
                   value={manualPhone}
-                  onChange={(e) => setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                  onChange={(e) =>
+                    setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
+                  }
                   placeholder={tr('sos.contactPlaceholder')}
-                  className="chhaya-input text-sm"
+                  className="chhaya-input text-sm flex-1"
                   style={{ background: '#ffffff' }}
                 />
-                <p className="text-[11px] text-yellow-600 mt-1">{tr('sos.enterContactHint')}</p>
               </div>
-            )}
-
-            {/* Sent confirmation */}
-            {sent && (
-              <div className="rounded-2xl p-3 text-center" style={{ background: '#f0fdf4', border: '1px solid #86efac' }}>
-                <span className="text-2xl">✅</span>
-                <p className="text-sm font-bold text-green-800 mt-1">{tr('sos.whatsappOpened')}</p>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="space-y-2.5">
-
-              {/* ── Call 108 — primary CTA ── */}
-              <button
-                id="sos-call-108"
-                type="button"
-                onClick={() => callNumber('108')}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-white text-sm transition-all cursor-pointer border-0"
-                style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)', boxShadow: '0 4px 16px rgba(220,38,38,0.4)' }}
-              >
-                <span className="text-lg">🚑</span>
-                <span>{tr('sos.call108')}</span>
-              </button>
-
-              {/* ── WhatsApp SOS — always active if phone available ── */}
-              <button
-                id="sos-whatsapp-btn"
-                type="button"
-                onClick={handleWhatsApp}
-                disabled={!activePhone || activePhone.length < 10}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl font-extrabold text-white text-sm transition-all cursor-pointer border-0"
-                style={
-                  activePhone && activePhone.length >= 10
-                    ? { background: 'linear-gradient(135deg,#16a34a,#15803d)', boxShadow: '0 4px 16px rgba(22,163,74,0.35)' }
-                    : { background: '#d1fae5', color: '#6b7280', cursor: 'not-allowed' }
-                }
-              >
-                {sending ? (
-                  <><div className="spinner" /><span>{tr('sos.openingWhatsApp')}</span></>
-                ) : (
-                  <><span className="text-lg">📲</span>
-                  <span>
-                    {activePhone && activePhone.length >= 10
-                      ? `${tr('sos.sendSOS')} ${savedName || activePhone}`
-                      : tr('sos.enterNumber')}
-                  </span></>
-                )}
-              </button>
-
-              {/* ── Heat Helpline ── */}
-              <button
-                id="sos-heat-helpline-btn"
-                type="button"
-                onClick={() => callNumber('18001801104')}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm transition-all border cursor-pointer"
-                style={{ background: '#fff7ed', color: '#c2410c', borderColor: '#fdba74' }}
-              >
-                <span className="text-lg">🌡️</span>
-                <span>{tr('sos.heatHelpline')}</span>
-              </button>
-
+              <p className="text-[11px] text-yellow-600 mt-1">{tr('sos.enterContactHint')}</p>
             </div>
+          )}
 
-            {/* Close */}
-            <button
-              id="sos-modal-close"
-              onClick={onClose}
-              className="w-full py-2 rounded-xl text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+          {/* Status feedback alerts */}
+          {sending && gpsStatus === 'locating' && (
+            <div
+              className="rounded-2xl p-3.5 text-center"
+              style={{ background: '#eff6ff', border: '1px solid #93c5fd' }}
             >
-              {tr('sos.close')}
+              <div
+                className="spinner mx-auto mb-1.5"
+                style={{ borderTopColor: '#2563eb' }}
+              />
+              <p className="text-sm font-bold text-blue-800">📡 Getting your location...</p>
+              <p className="text-xs text-blue-600 mt-0.5">
+                Acquiring live GPS coordinates for WhatsApp...
+              </p>
+            </div>
+          )}
+
+          {gpsStatus === 'found' && !sent && (
+            <div
+              className="rounded-2xl p-3 text-center"
+              style={{ background: '#f0fdf4', border: '1px solid #86efac' }}
+            >
+              <p className="text-sm font-bold text-green-800">📍 Live location ready!</p>
+              <p className="text-xs text-green-700 mt-0.5">
+                Opening WhatsApp with your Google Maps link...
+              </p>
+            </div>
+          )}
+
+          {sent && (
+            <div
+              className="rounded-2xl p-3 text-center"
+              style={{ background: '#f0fdf4', border: '1px solid #86efac' }}
+            >
+              <span className="text-2xl">✅</span>
+              <p className="text-sm font-bold text-green-800 mt-1">
+                {tr('sos.whatsappOpened')}
+              </p>
+              <p className="text-xs text-green-700 mt-0.5 font-medium">
+                📍 Live Google Maps link included in message
+              </p>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="space-y-2.5">
+            {/* ── Call 108 — primary CTA ── */}
+            <button
+              id="sos-call-108"
+              type="button"
+              onClick={() => callNumber('108')}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98]"
+              style={{
+                background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
+                boxShadow: '0 4px 16px rgba(220,38,38,0.4)'
+              }}
+            >
+              <span className="text-xl">🚑</span>
+              <span>{tr('sos.call108')}</span>
+            </button>
+
+            {/* ── WhatsApp SOS — guaranteed to include live maps link ── */}
+            <button
+              id="sos-whatsapp-btn"
+              type="button"
+              onClick={handleWhatsApp}
+              disabled={!isPhoneValid || sending}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98]"
+              style={
+                isPhoneValid && !sending
+                  ? {
+                      background: 'linear-gradient(135deg,#16a34a,#15803d)',
+                      boxShadow: '0 4px 16px rgba(22,163,74,0.35)'
+                    }
+                  : { background: '#d1fae5', color: '#6b7280', cursor: 'not-allowed' }
+              }
+            >
+              {sending ? (
+                <>
+                  <div className="spinner" />
+                  <span>
+                    {gpsStatus === 'locating'
+                      ? 'Getting your location...'
+                      : tr('sos.openingWhatsApp')}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xl">📲</span>
+                  <span>
+                    {isPhoneValid
+                      ? `${tr('sos.sendSOS')} ${savedName || ('+91 ' + normalizedPhone)}`
+                      : tr('sos.enterNumber')}
+                  </span>
+                </>
+              )}
+            </button>
+
+            {/* ── Heat Helpline ── */}
+            <button
+              id="sos-heat-helpline-btn"
+              type="button"
+              onClick={() => callNumber('18001801104')}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm transition-all border cursor-pointer hover:bg-orange-50 active:scale-[0.98]"
+              style={{
+                background: '#fff7ed',
+                color: '#c2410c',
+                borderColor: '#fdba74'
+              }}
+            >
+              <span className="text-lg">🌡️</span>
+              <span>{tr('sos.heatHelpline')}</span>
             </button>
           </div>
+
+          {/* Close */}
+          <button
+            id="sos-modal-close"
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+          >
+            {tr('sos.close')}
+          </button>
         </div>
       </div>
+    </div>
   );
 }
-
 
 // ── Main Dashboard ───────────────────────────────────────────────────────────
 function UserDashboard() {
@@ -275,15 +492,22 @@ function UserDashboard() {
     fetchCoolingCenters(city);
     fetchHotspots(city);
 
-    // Browser geolocation
+    // Browser geolocation with automatic fallback
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
-        (err) => { console.warn('Geolocation denied:', err.message); },
-        { enableHighAccuracy: true, timeout: 8000 }
+        (err) => {
+          console.warn('Geolocation denied or unavailable on mount:', err?.message);
+          const fallback = getCityCoordinates(city);
+          setUserCoords({ lat: fallback.lat, lng: fallback.lng });
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
       );
+    } else {
+      const fallback = getCityCoordinates(city);
+      setUserCoords({ lat: fallback.lat, lng: fallback.lng });
     }
   }, [navigate]);
 

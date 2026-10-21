@@ -1,0 +1,73 @@
+# ==============================================================================
+# ☀️ CHHAYA PROJECT - REQUIREMENTS & DEPENDENCY MANIFEST
+# ==============================================================================
+# This project is a Full-Stack Node.js (Express + React + Vite) application.
+#
+# 🚀 QUICK INSTALLATION (DOWNLOAD EVERYTHING AT ONCE - NO NEED TO INSTALL SEPARATELY):
+# ------------------------------------------------------------------------------
+# Option A (Windows):
+#     Double-click 'setup.bat' OR run: .\setup.bat
+#
+# Option B (macOS / Linux / Git Bash):
+#     chmod +x setup.sh && ./setup.sh
+#
+# Option C (Any terminal from root directory):
+#     npm run install:all
+#
+# ==============================================================================
+# 1. SYSTEM PREREQUISITES
+# ==============================================================================
+# Node.js: >= 18.0.0 (https://nodejs.org/)
+# npm:     >= 9.0.0
+# MongoDB: Community Server or MongoDB Atlas (https://www.mongodb.com/)
+#
+# ==============================================================================
+# 2. BACKEND DEPENDENCIES (Location: ./backend)
+# ==============================================================================
+axios==1.19.0                 # HTTP client for external weather/API calls
+bcryptjs==3.0.3               # Password hashing library for secure authentication
+cors==2.8.6                   # Cross-Origin Resource Sharing middleware
+dotenv==17.4.2                # Loads environment variables from .env file
+express==5.2.1                # Fast web framework for Node.js REST API
+express-rate-limit==8.7.1     # Rate limiting middleware for API security & protection
+jsonwebtoken==9.0.3           # JSON Web Token (JWT) signing & authentication
+mongodb==7.5.0                # Official MongoDB driver for Node.js
+mongoose==9.8.1               # Elegant MongoDB object modeling (ODM) for Node.js
+nodemon==3.1.14               # Live development server reloader
+sarvamai==1.1.11              # Sarvam AI API client for multilingual assistant
+#
+# ==============================================================================
+# 3. FRONTEND PRODUCTION DEPENDENCIES (Location: ./frontend)
+# ==============================================================================
+axios==1.19.0                 # HTTP client for connecting to backend API
+leaflet==1.9.4                # Open-source JavaScript library for interactive maps
+react==19.2.8                 # React core user interface library
+react-dom==19.2.8             # React package for working with the DOM
+react-leaflet==5.0.0          # React bindings for Leaflet map components
+react-router-dom==7.18.2      # Client-side declarative routing library
+#
+# ==============================================================================
+# 4. FRONTEND DEVELOPMENT DEPENDENCIES (Location: ./frontend)
+# ==============================================================================
+@tailwindcss/vite==4.3.3      # Tailwind CSS v4 Vite integration plugin
+@types/react==19.2.18         # TypeScript type definitions for React
+@types/react-dom==19.2.4      # TypeScript type definitions for React DOM
+@vitejs/plugin-react==6.0.5   # Official Vite plugin for Fast Refresh in React
+oxlint==1.76.0                # Ultra-fast JavaScript & JSX linter
+tailwindcss==4.3.3            # Utility-first CSS framework
+vite==8.2.0                   # Next-generation frontend tooling and bundler
+#
+# ==============================================================================
+# 5. ENVIRONMENT CONFIGURATION (.env)
+# ==============================================================================
+# The backend requires a '.env' file in 'backend/.env'.
+# An example file is available at 'backend/.env.example'.
+#
+# Required Keys:
+# PORT=5000
+# MONGO_URI=mongodb://localhost:27017/chhaya
+# JWT_SECRET=your_jwt_secret_here
+# WEATHER_API_KEY=your_weather_api_key_here
+# SARVAM_API_KEY=your_sarvam_ai_key_here
+#
+# ==============================================================================
