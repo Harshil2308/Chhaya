@@ -1,57 +1,107 @@
-# ☀️ Chhaya (छाया) - Heatwave & Cooling Center Management System
+# ☀️ Chhaya (छाया) - Heatwave Early Warning & Heat-Safety System
 
-Chhaya is a full-stack web application designed to help communities manage heatwave alerts, map heat hotspots, locate cooling centers, and coordinate emergency response teams.
+> **A real-time heatwave early warning, risk advisory, and heat-safety web platform built for India's outdoor workforce — construction laborers, farmers, delivery partners, and street vendors — who must work through extreme heat.**
 
 ---
 
 ## 📌 Table of Contents
 1. [Project Overview](#-project-overview)
-2. [Tech Stack & Libraries](#-tech-stack--libraries)
-3. [Folder Structure](#-folder-structure)
-4. [Environment Setup (`.env`)](#-environment-setup-env)
-5. [Installation & Getting Started](#-installation--getting-started)
-6. [Running the Application](#-running-the-application)
-7. [API Endpoint Reference](#-api-endpoint-reference)
-8. [Git & Collaboration Best Practices](#-git--collaboration-best-practices)
-9. [Troubleshooting & FAQ](#-troubleshooting--faq)
+2. [Key Features](#-key-features)
+3. [Tech Stack & Dependencies](#-tech-stack--dependencies)
+4. [Folder Structure](#-folder-structure)
+5. [Environment Setup (`.env`)](#-environment-setup-env)
+6. [Installation & Getting Started](#-installation--getting-started)
+7. [Running the Application](#-running-the-application)
+8. [API Endpoint Reference](#-api-endpoint-reference)
+9. [Git & Collaboration Best Practices](#-git--collaboration-best-practices)
+10. [Troubleshooting & FAQ](#-troubleshooting--faq)
 
 ---
 
 ## 🚀 Project Overview
 
-* **Frontend**: React 19 single-page app built with Vite, Tailwind CSS v4, and React Leaflet maps.
-* **Backend**: Node.js & Express RESTful API server connected to MongoDB database.
-* **Key Capabilities**:
-  * Heatwave alert distribution.
-  * Interactive map listing heat hotspots & nearby cooling centers.
-  * Emergency team check-ins and tracking.
-  * User authentication & role management.
+Extreme heat events and heatwaves in India present severe occupational hazards for millions of unorganized and daily-wage outdoor workers. Unlike office workers, they cannot simply choose to stay indoors.
+
+**Chhaya (छाया)** bridges this gap by translating real-time meteorological conditions into practical, actionable safety guidance:
+- Evaluates real-feel danger using the **Heat Index** (combining ambient temperature and relative humidity).
+- Delivers **occupation-tailored work-rest cycles and hydration reminders** (e.g. for construction laborers carrying heavy loads vs. delivery personnel on bikes).
+- Provides an **interactive map of nearby verified cooling centers, shaded rest areas, and drinking water points**.
+- Features an **emergency SOS response system** with 108 emergency calling and instant WhatsApp location dispatch.
+- Accommodates language and literacy barriers through **multilingual support (English, हिन्दी, ગુજરાતી)** and **voice read-aloud via Sarvam AI**.
 
 ---
 
-## 🛠 Tech Stack & Libraries
+## ✨ Key Features
+
+### 🌡️ 1. Live Heat-Risk Alerts (Heat Index Based)
+* Calculates real-feel temperature and heat danger levels (**Low**, **Moderate**, **High**, **Extreme**) using live weather data from OpenWeatherMap.
+* Automatically defaults to key urban centers (e.g., Ahmedabad) with seamless fallback if a city is not found.
+
+### 🛡️ 2. Occupation-Tailored Safety Guidance
+* Workers select their trade (**Construction**, **Farmer**, **Delivery Partner**, **Street Vendor**, or **Other**).
+* Advisories adjust specifically to physical workload: hydration schedules, required rest intervals per working hour, and clothing recommendations.
+
+### ⏰ 3. Safe Shift Planner (24-Hour Forecast)
+* Breaks down the upcoming 24-hour weather forecast into 3-hour windows.
+* Flags high-danger afternoon peak heat hours and identifies safer morning/evening work windows.
+
+### 📍 4. Nearby Cooling Centers & Interactive Map
+* Built with Leaflet to display verified cooling facilities, government shelters, and public drinking water stations.
+* Uses the Haversine formula to compute exact distance from the worker's device to the nearest shelter.
+
+### 🚨 5. Crowdsourced Hotspot Reporting
+* Field workers and supervisors can report hazardous heat spots, unshaded worksites, or drinking water shortages directly on the map.
+* Admin dashboard enables reviewing and updating hotspot statuses.
+
+### 🆘 6. Emergency SOS (108 + WhatsApp Dispatch)
+* One-tap direct dialer to India's National Ambulance Service (`tel:108`).
+* Instant WhatsApp SOS trigger sending live GPS coordinates and predefined emergency messages to registered emergency contacts.
+
+### 🩹 7. First-Aid Heat Illness Guide
+* Rapid, illustrated guidance for identifying symptoms and taking first-aid actions for:
+  * Heat Stroke (Emergency)
+  * Heat Exhaustion
+  * Heat Cramps
+  * Heat Rash
+  * Dehydration
+
+### 🗣️ 8. Multilingual & Voice Read-Aloud
+* Full UI static localization across 3 languages: **English**, **Hindi (हिन्दी)**, and **Gujarati (ગુજરાતી)**.
+* Integrated audio read-aloud powered by Sarvam AI (`bulbul:v1`) with browser SpeechSynthesis fallback for low-literacy workers.
+* Multilingual heat-safety AI conversational assistant for on-demand worker queries.
+
+### 👥 9. Role-Based Dashboards & Team Check-Ins
+* **Worker**: Personalized heat index, shift planner, cooling map, hotspot reporting, and emergency SOS.
+* **Manager**: Lightweight team creation, member join codes, and live worker hydration/well-being check-in board.
+* **Admin**: Dedicated administrative portal to add/delete cooling centers and review reported hotspots.
+
+---
+
+## 🛠 Tech Stack & Dependencies
 
 ### **Frontend (`/frontend`)**
-| Library / Framework | Version | Purpose |
+| Package | Version | Purpose |
 | :--- | :--- | :--- |
-| **React** | `^19.2.8` | UI Library for building interactive user interfaces |
-| **Vite** | `^8.2.0` | Next-generation frontend build tool and dev server |
-| **React Router DOM** | `^7.18.2` | Client-side routing across pages |
-| **Leaflet & React-Leaflet** | `^1.9.4` / `^5.0.0` | Interactive map visualizer for hotspots & cooling centers |
-| **Tailwind CSS** | `^4.3.3` | Utility-first CSS framework for styling |
-| **Axios** | `^1.19.0` | Promise-based HTTP client for API communication |
-| **Oxlint** | `^1.75.0` | Fast JavaScript / React linter |
+| **React** | `^19.2.8` | Component-based UI framework |
+| **Vite** | `^8.2.0` | Frontend build tool and rapid development server |
+| **React Router DOM** | `^7.18.2` | Client-side routing (`/login`, `/register`, `/dashboard`, `/admin`, `/first-aid`) |
+| **Leaflet & React-Leaflet** | `^1.9.4` / `^5.0.0` | Interactive mapping for cooling centers and heat hotspots |
+| **Tailwind CSS** | `^4.3.3` | Utility-first CSS styling (via `@tailwindcss/vite`) |
+| **Axios** | `^1.19.0` | HTTP client for backend REST API requests |
+| **Oxlint** | `^1.75.0` | Ultra-fast linter for JavaScript and JSX code quality |
 
 ### **Backend (`/backend`)**
-| Library / Framework | Version | Purpose |
+| Package | Version | Purpose |
 | :--- | :--- | :--- |
-| **Express** | `^5.2.1` | Web framework for Node.js REST API server |
-| **MongoDB / Mongoose** | `^7.5.0` / `^9.8.1` | Database client & Object Data Modeling (ODM) |
-| **JSONWebToken (`jsonwebtoken`)** | `^9.0.3` | User authentication via JWT tokens |
-| **BcryptJS (`bcryptjs`)** | `^3.0.3` | Password hashing for secure user auth |
-| **Dotenv (`dotenv`)** | `^17.4.2` | Environment variables loader |
+| **Express** | `^5.2.1` | REST API application framework for Node.js |
+| **MongoDB / Mongoose** | `^7.5.0` / `^9.8.1` | Database client and Object Data Modeling (ODM) |
+| **JSONWebToken (`jsonwebtoken`)** | `^9.0.3` | Role-based token authentication & route protection |
+| **BcryptJS (`bcryptjs`)** | `^3.0.3` | Password hashing for secure user registration and login |
+| **Dotenv (`dotenv`)** | `^17.4.2` | Environment variable management |
 | **Cors (`cors`)** | `^2.8.6` | Cross-Origin Resource Sharing middleware |
-| **Nodemon (`nodemon`)** | `^3.1.14` | Hot-reloading server monitor during development |
+| **Express Rate Limit** | `^8.7.1` | API rate limiting (protects TTS and AI assistant endpoints) |
+| **Sarvam AI SDK (`sarvamai`)** | `^1.1.11` | Indian-language TTS and AI safety assistant integration |
+| **Nodemon (`nodemon`)** | `^3.1.14` | Hot-reload development server |
 
 ---
 
@@ -59,172 +109,276 @@ Chhaya is a full-stack web application designed to help communities manage heatw
 
 ```
 Chhaya/
-├── package.json              # Root package configuration (convenience scripts)
-├── README.md                 # Project documentation (this file)
-├── .gitignore                # Root Git ignore rules
+├── package.json              # Root workspace convenience scripts
+├── README.md                 # Project documentation
+├── setup.bat                 # Windows automated 1-click setup script
+├── setup.sh                  # macOS/Linux automated setup script
+├── requirements.txt          # Dependency reference manifest
+├── .gitignore                # Root Git ignore rules (blocks .env, node_modules)
 │
-├── backend/                  # Express REST API Server
+├── backend/                  # Node.js + Express API Server
 │   ├── config/
-│   │   └── db.js             # MongoDB connection logic
+│   │   └── db.js             # MongoDB connection logic (Local & Atlas)
 │   ├── controllers/          # Business logic handlers
-│   ├── middleware/           # Auth and error middleware
-│   ├── models/               # Mongoose DB Schemas (User, Hotspot, CoolingCenter, etc.)
-│   ├── routes/               # Express API Routes
+│   │   ├── alertController.js
+│   │   ├── assistantController.js
+│   │   ├── authController.js
+│   │   ├── checkInController.js
+│   │   ├── coolingCenterController.js
+│   │   ├── hotspotController.js
+│   │   └── teamController.js
+│   ├── middleware/           # Auth (protect, manager, admin) & rate limiting
+│   ├── models/               # Mongoose schemas (User, CoolingCenter, Hotspot, Team, CheckIn)
+│   ├── routes/               # API endpoint definitions
 │   │   ├── alertRoutes.js
+│   │   ├── assistantRoutes.js
 │   │   ├── authRoutes.js
 │   │   ├── checkInRoutes.js
 │   │   ├── coolingCenterRoutes.js
 │   │   ├── hotspotRoutes.js
+│   │   ├── speakRoutes.js
 │   │   └── teamRoutes.js
-│   ├── .env                  # Backend secrets & configuration (Ignored by Git)
+│   ├── utils/                # Helper utilities (sarvamClient, etc.)
+│   ├── .env                  # Backend environment secrets (NEVER commit to Git)
+│   ├── .env.example          # Environment variables template
 │   ├── .gitignore            # Backend Git ignore rules
 │   ├── package.json          # Backend dependencies & npm scripts
 │   └── server.js             # Express entry point
 │
-└── frontend/                 # React Frontend Application
-    ├── public/               # Static public assets
+└── frontend/                 # React 19 + Vite Application
+    ├── public/               # Public static assets
     ├── src/
-    │   ├── assets/           # Images & Icons
-    │   ├── components/       # Reusable UI components
-    │   ├── context/          # React Context (Auth, Global State)
-    │   ├── pages/            # View pages (Home, Map, Dashboard, etc.)
-    │   ├── services/         # Axios API calls
-    │   ├── utils/            # Helper functions
-    │   ├── App.jsx           # Root App component with routes
-    │   └── main.jsx          # Vite React DOM mounting point
+    │   ├── assets/           # Project imagery & vector icons
+    │   ├── components/       # Reusable components (HeatHelper, MapView, SunPanel, etc.)
+    │   ├── context/          # React context providers (AuthContext, LanguageContext)
+    │   ├── locales/          # Static translations (English, Hindi, Gujarati)
+    │   ├── pages/            # Application views (Login, Register, UserDashboard, AdminDashboard, FirstAid)
+    │   ├── services/         # Axios instance and API call abstractions
+    │   ├── utils/            # Helper functions (geoDistance, personalizedRisk)
+    │   ├── App.jsx           # Top-level routing layout
+    │   └── main.jsx          # React DOM mounting entry point
     ├── .gitignore            # Frontend Git ignore rules
-    ├── index.html            # HTML layout
+    ├── index.html            # HTML document template
     ├── package.json          # Frontend dependencies & npm scripts
-    └── vite.config.js        # Vite build configuration
+    └── vite.config.js        # Vite bundler configuration
 ```
 
 ---
 
 ## 🔑 Environment Setup (`.env`)
 
-Create a `.env` file inside the `backend/` directory with the following variables:
+The backend requires a valid configuration file located at `backend/.env`.
 
-```env
-PORT=5000
-MONGO_URI=mongodb://localhost:27017/chhaya
-JWT_SECRET=your_jwt_secret_key_here
-WEATHER_API_KEY=your_weather_api_key_here
-```
+1. Copy the example template into a real `.env` file:
+   ```powershell
+   # Windows PowerShell
+   copy backend\.env.example backend\.env
 
-> ⚠️ **Note:** `.env` contains sensitive secrets and database URLs. **Never commit `.env` to Git**.
+   # macOS / Linux / Git Bash
+   cp backend/.env.example backend/.env
+   ```
+
+2. Open `backend/.env` and configure your environment variables:
+
+   ```env
+   PORT=5000
+
+   # Option A: Local MongoDB (default)
+   MONGO_URI=mongodb://127.0.0.1:27017/chhaya
+
+   # Option B: MongoDB Atlas
+   # MONGO_URI=mongodb+srv://<USER>:<PASSWORD>@<CLUSTER>.mongodb.net/chhaya?retryWrites=true&w=majority
+
+   # JWT secret for token signing
+   JWT_SECRET=your_super_secret_jwt_key_here
+
+   # OpenWeatherMap API Key (Required for live heat index & forecast)
+   WEATHER_API_KEY=your_openweathermap_api_key_here
+
+   # Sarvam AI API Key (Optional: for native Indian language voice & assistant)
+   SARVAM_API_KEY=your_sarvam_ai_key_here
+   ```
+
+> ⚠️ **CRITICAL SECURITY NOTE:** Never commit `backend/.env` to Git. Both root and backend `.gitignore` files are pre-configured to keep your keys safe.
 
 ---
 
 ## 📥 Installation & Getting Started
 
+### Prerequisites
+* **Node.js** (v18.x or later recommended)
+* **npm** (v9.x or later)
+* **MongoDB** (Local MongoDB Community Server running on port 27017 OR a free MongoDB Atlas cluster)
+
 ### 1. Clone the repository
-```powershell
+```bash
 git clone https://github.com/Harshil2308/Chhaya.git
 cd Chhaya
 ```
 
-### 2. Install All Dependencies (Single Command or 1-Click)
+### 2. Install all dependencies
 
-You do **not** need to go into each folder and download things separately! Choose any of the following:
+Choose **any** of the following convenient installation methods:
 
-* **⚡ Option A: Single Command (Terminal)**
-  From the root `Chhaya` folder:
+* **⚡ Option A: Single Command from Root**
   ```powershell
   npm run install:all
   ```
-  *(This will automatically download all libraries for both backend and frontend in one go!)*
+  *(Runs `npm install` inside both `backend/` and `frontend/` automatically)*
 
-* **🖱️ Option B: Windows 1-Click Installer**
-  Double-click `setup.bat` or run in terminal:
+* **🖱️ Option B: Windows Automated Script**
   ```powershell
   .\setup.bat
   ```
 
-* **🐧 Option C: macOS / Linux / Git Bash**
-  Run:
+* **🐧 Option C: macOS / Linux / Git Bash Script**
   ```bash
   chmod +x setup.sh && ./setup.sh
   ```
 
-*(Manual fallback: you can still run `cd backend && npm install` and `cd frontend && npm install` separately if desired).*
-
-> 📋 All required dependencies and versions are also listed in [requirements.txt](file:///c:/Users/harsh/Desktop/Chhaya/requirements.txt).
-
+* **🔧 Option D: Manual Step-by-Step**
+  ```bash
+  cd backend && npm install
+  cd ../frontend && npm install
+  ```
 
 ---
 
 ## 🚀 Running the Application
 
-### 1. Run the Backend Server
-From the `backend` folder:
-```powershell
-cd backend
-npm run dev
-```
-*(Server will start on `http://localhost:5000`)*
+For development, you need both the backend API and frontend Vite server running concurrently:
 
-### 2. Run the Frontend App
-From the `frontend` folder:
+### Method 1: Two Separate Terminals (Recommended)
+
+* **Terminal 1: Start Backend API**
+  ```powershell
+  cd backend
+  npm run dev
+  ```
+  *Express server will launch on:* `http://localhost:5000`  
+  *Console should confirm:* `MongoDB Connected Successfully`
+
+* **Terminal 2: Start Frontend Web App**
+  ```powershell
+  cd frontend
+  npm run dev
+  ```
+  *Vite development server will launch on:* `http://localhost:5173`
+
+---
+
+### Method 2: From the Root Directory
+
 ```powershell
-cd frontend
-npm run dev
+# In terminal 1:
+npm run dev:backend
+
+# In terminal 2:
+npm run dev:frontend
 ```
-*(App will run on `http://localhost:5173` or port assigned by Vite)*
+
+Open `http://localhost:5173` in your browser. Register an account (select your occupation and language) or log in to access the dashboard.
 
 ---
 
 ## 📡 API Endpoint Reference
 
-### **Authentication (`/api/auth`)**
-* `POST /api/auth/register` — Register a new user
-* `POST /api/auth/login` — Authenticate user & get JWT token
+All endpoints except authentication and assistant status require an `Authorization: Bearer <token>` header.
 
-### **Alerts (`/api/alerts`)**
-* `GET /api/alerts` — Fetch active heatwave alerts
-* `POST /api/alerts` — Create a new alert (Admin/Authorized)
+### **1. Authentication (`/api/auth`)**
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/auth/register` | Public | Register user (`name`, `phone`, `password`, `role`, `occupation`, `location`, `emergencyContactName`, `emergencyContactPhone`, `language`) |
+| `POST` | `/api/auth/login` | Public | Authenticate with `phone` & `password`; returns JWT token & user object |
+| `GET` | `/api/auth/me` | Protected | Fetch current authenticated user's profile |
+| `PUT` | `/api/auth/me` | Protected | Update profile, occupation, city location, or preferred language |
 
-### **Hotspots (`/api/hotspots`)**
-* `GET /api/hotspots` — Get list/coordinates of heat hotspots
+### **2. Heat Alerts & Guidance (`/api/alerts`)**
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/alerts?city={city}&job={job}` | Protected | Live heat index, temperature, humidity, danger tier, and occupation-specific work-rest guidelines |
+| `GET` | `/api/alerts/forecast?city={city}` | Protected | 24-hour heat forecast timeline (3-hr blocks) and identified safe working windows |
 
-### **Cooling Centers (`/api/cooling-centers`)**
-* `GET /api/cooling-centers` — Get list of available cooling centers
+### **3. Cooling Centers (`/api/cooling-centers`)**
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/cooling-centers` | Protected | Fetch all active cooling shelters, rest areas, and water points with coordinates |
+| `POST` | `/api/cooling-centers` | Admin Only | Add a new verified cooling center |
+| `DELETE`| `/api/cooling-centers/:id` | Admin Only | Delete an existing cooling center |
+
+### **4. Hotspot Reporting (`/api/hotspots`)**
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/hotspots` | Protected | Retrieve all reported heat hotspots |
+| `POST` | `/api/hotspots` | Protected | Submit a heat hotspot report (`title`, `location`, `intensity`, `description`) |
+| `PUT` | `/api/hotspots/:id` | Admin Only | Update hotspot verification status (`active`, `verified`, `resolved`) |
+
+### **5. Voice & Multilingual Assistant**
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/assistant/status` | Public | Check if Sarvam AI multilingual assistant is enabled on the server |
+| `POST` | `/api/assistant` | Protected | Query conversational heat safety assistant (`message`, `language`, `city`) |
+| `POST` | `/api/speak` | Protected | Generate native audio speech via Sarvam AI TTS (`text`, `lang`: `en` \| `hi` \| `gu`) |
+
+### **6. Team & Check-In System (Manager Operations)**
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/teams` | Manager Only | Create a worker management team |
+| `GET` | `/api/teams/my` | Protected | Retrieve teams associated with the current user |
+| `POST` | `/api/teams/join` | Protected | Join a team using team code / ID |
+| `POST` | `/api/checkins` | Protected | Submit hydration and safety check-in status |
+| `GET` | `/api/checkins/team/:teamId`| Manager Only | View live check-in board and status of team members |
 
 ---
 
 ## 🤝 Git & Collaboration Best Practices
 
-### 🛑 DO NOT Commit `node_modules`
-* `node_modules` is listed in `.gitignore` and must **never** be pushed to Git repository.
-* `node_modules` contains platform-specific binaries (e.g. Windows vs macOS vs Linux) and thousands of files.
-
-### 🔄 Collaborator Workflow (When pulling new changes):
-When your teammate pushes new changes or installs a new package:
-
-1. **Pull the latest code:**
+1. **Never Commit Secrets or Dependencies**:
+   * Verify that `.env` and `node_modules/` are untracked before staging:
+     ```powershell
+     git status
+     ```
+2. **When Pulling Updates from Team Members**:
    ```powershell
    git pull origin main
+   npm run install:all
    ```
-2. **Sync installed packages on your local machine:**
-   ```powershell
-   # Update backend packages if updated
-   cd backend
-   npm install
-
-   # Update frontend packages if updated
-   cd ../frontend
-   npm install
-   ```
+3. **Use Meaningful Commits**:
+   Keep commits focused on specific features or fixes (e.g., `fix: resolve MongoDB connection retry loop`, `feat: add Gujarati TTS voice support`).
 
 ---
 
 ## ❓ Troubleshooting & FAQ
 
-#### Q1: `Missing script: "dev"` when running `npm run dev`
-* **Cause**: You ran `npm run dev` in the root folder or `backend/` before the script was configured.
-* **Fix**: Run `npm run dev` inside `frontend/` (or `backend/` now that `backend/package.json` script is added).
+#### Q1: `MongoDB connection failed: The uri parameter to openUri() must be a string, got "undefined"`
+* **Cause**: `MONGO_URI` is missing or empty in `backend/.env`.
+* **Fix**: Ensure `backend/.env` exists and contains a valid URI (e.g. `MONGO_URI=mongodb://127.0.0.1:27017/chhaya` or your MongoDB Atlas connection string).
 
-#### Q2: `MongoDB Connection Failed`
-* **Cause**: Local MongoDB service is not running or `MONGO_URI` in `backend/.env` is incorrect.
-* **Fix**: Ensure MongoDB service is started on your computer (`net start MongoDB` on Windows) or check your connection string.
+#### Q2: `MongoDB connection failed: connect ECONNREFUSED 127.0.0.1:27017`
+* **Cause**: Local MongoDB service is not started on your machine.
+* **Fix**:
+  * On Windows: Open Services app (`services.msc`) and start `MongoDB Server`, or run `net start MongoDB` as Administrator.
+  * Alternatively, switch `MONGO_URI` to a free MongoDB Atlas cloud cluster.
+
+#### Q3: `Port 5000 is already in use` (`EADDRINUSE`)
+* **Cause**: Another Node instance or server process is already running on port 5000.
+* **Fix**: Terminate the previous process or check running processes:
+  ```powershell
+  # Windows PowerShell
+  Get-NetTCPConnection -LocalPort 5000
+  Stop-Process -Id <PID> -Force
+  ```
+
+#### Q4: Weather data shows fallback or fails to load
+* **Cause**: `WEATHER_API_KEY` is missing or invalid in `backend/.env`.
+* **Fix**: Sign up for a free OpenWeatherMap API key at [openweathermap.org](https://openweathermap.org/) and place it in `backend/.env`. The backend has built-in offline fallbacks to keep the UI functioning even during API limits.
+
+#### Q5: Voice read-aloud button does not play audio
+* **Cause**: `SARVAM_API_KEY` is not configured.
+* **Fix**: Without a Sarvam AI key, the application automatically falls back to your browser's native Web Speech API synthesis. Configure `SARVAM_API_KEY` in `backend/.env` to enable natural Indian accent voices (`bulbul:v1`).
 
 ---
+
+<div align="center">
+  <sub>Built with ❤️ to protect outdoor workers from extreme heat stress across India.</sub>
+</div>
