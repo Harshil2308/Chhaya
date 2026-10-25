@@ -27,7 +27,7 @@ function Login() {
       const res = await API.post('/auth/login', { phone, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
-      navigate(res.data.user.role === 'admin' ? '/admin' : '/dashboard');
+      navigate(res.data.user.role === 'admin' ? '/admin' : res.data.user.role === 'manager' ? '/manager' : '/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || tr('login.loginFailed'));
     } finally {
