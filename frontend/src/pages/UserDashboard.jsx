@@ -8,6 +8,7 @@ import SafeShiftPlanner from '../components/SafeShiftPlanner';
 import { calculateHaversineDistance, getCityCoordinates } from '../utils/geoDistance';
 import { useLanguage } from '../context/LanguageContext';
 import HeatHelper from '../components/HeatHelper';
+import ListenButton from '../components/ListenButton';
 
 const RISK_CONFIG = {
   Low: { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
@@ -796,10 +797,18 @@ function UserDashboard() {
                     <span className="font-bold text-gray-900">{tr('dashboard.whyItChanged')} </span>
                     <span>{tr('jobDescriptions.' + (user.occupation || 'other')) || heatData.reason}</span>
                   </div>
-                  <div className="mt-2 text-xs leading-relaxed font-medium" style={{ color: riskCfg.textColor }}>
-                    <span className="font-bold uppercase tracking-wide block mb-1">{tr('dashboard.practicalShiftGuidance')}</span>
-                    <span>{translations?.jobAdvice?.[displayRiskLevel]?.[user.occupation] || translations?.jobAdvice?.[displayRiskLevel]?.default || heatData.personalAdvice || heatData.advice}</span>
-                  </div>
+                  {(() => {
+                    const guidanceText = translations?.jobAdvice?.[displayRiskLevel]?.[user.occupation] || translations?.jobAdvice?.[displayRiskLevel]?.default || heatData.personalAdvice || heatData.advice;
+                    return (
+                      <div className="mt-2 text-xs leading-relaxed font-medium" style={{ color: riskCfg.textColor }}>
+                        <div className="flex items-center justify-between mb-1 gap-2">
+                          <span className="font-bold uppercase tracking-wide">{tr('dashboard.practicalShiftGuidance')}</span>
+                          {guidanceText && <ListenButton text={guidanceText} size="sm" />}
+                        </div>
+                        <span>{guidanceText}</span>
+                      </div>
+                    );
+                  })()}
                 </>
               ) : (
                 <p className="text-xs text-gray-400 py-4">{tr('dashboard.noPersonalData')}</p>

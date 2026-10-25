@@ -29,7 +29,9 @@ function PersonalizedRiskCard({
 
   const isRiskShifted = result.baseRiskLevel !== result.personalizedRiskLevel;
 
-  const localizedAdvice = tr(`riskAdvice.${result.personalizedRiskLevel}`) || result.personalizedAdvice;
+  const adviceKey = `riskAdvice.${result.personalizedRiskLevel}`;
+  const trAdvice = tr(adviceKey);
+  const localizedAdvice = (trAdvice && trAdvice !== adviceKey) ? trAdvice : (result.personalizedAdvice || '');
 
   const netOffsetStr = result.totalOffset >= 0 ? `+${result.totalOffset.toFixed(1)}` : `${result.totalOffset.toFixed(1)}`;
   const localizedExplanation = isRiskShifted
