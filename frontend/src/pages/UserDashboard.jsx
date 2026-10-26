@@ -798,7 +798,9 @@ function UserDashboard() {
                     <span>{tr('jobDescriptions.' + (user.occupation || 'other')) || heatData.reason}</span>
                   </div>
                   {(() => {
-                    const guidanceText = translations?.jobAdvice?.[displayRiskLevel]?.[user.occupation] || translations?.jobAdvice?.[displayRiskLevel]?.default || heatData.personalAdvice || heatData.advice;
+                    const fallbackTr = tr('riskAdvice.' + displayRiskLevel);
+                    const safeTrAdvice = fallbackTr && !fallbackTr.startsWith('riskAdvice.') ? fallbackTr : null;
+                    const guidanceText = translations?.jobAdvice?.[displayRiskLevel]?.[user.occupation] || translations?.jobAdvice?.[displayRiskLevel]?.default || safeTrAdvice || heatData.personalAdvice || heatData.advice;
                     return (
                       <div className="mt-2 text-xs leading-relaxed font-medium" style={{ color: riskCfg.textColor }}>
                         <div className="flex items-center justify-between mb-1 gap-2">

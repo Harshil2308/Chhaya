@@ -20,13 +20,18 @@ const ADVICE_LOOKUP = {
   },
   'Dangerous! Avoid heavy work during peak hours.': {
     hi: 'खतरनाक! दोपहर के चरम घंटों में भारी काम से बचें।',
-    gu: 'જોખમી! બપોરના આકરા તડકામાં ભારે काम કરવાનું ટાળો.',
+    gu: 'જોખમી! બપોરના આકરા તડકામાં ભારે કામ કરવાનું ટાળો.',
     en: 'Dangerous! Avoid heavy work during peak hours.',
   },
   'Extreme danger. Stay indoors if possible.': {
     hi: 'अत्यधिक खतरा। यदि संभव हो तो धूप में काम तुरंत रोकें।',
     gu: 'અત્યંત ગંભીર જોખમ. શક્ય હોય તો તડકામાં કામ તરત જ અટકાવો.',
     en: 'Extreme danger. Stay indoors if possible.',
+  },
+  'Normal conditions. Drink water every 30 minutes before feeling thirsty. Keep ORS packet handy.': {
+    hi: 'सामान्य स्थितियाँ। प्यास लगने से पहले हर 30 मिनट में पानी पिएं। ORS पैकेट पास रखें।',
+    gu: 'સામાન્ય સ્થિતિ. તરસ લાગે તે પહેલાં દર ૩૦ મિનિટે પાણી પીઓ. ORS પેકેટ સાથે રાખો.',
+    en: 'Normal conditions. Drink water every 30 minutes before feeling thirsty. Keep ORS packet handy.',
   },
 };
 

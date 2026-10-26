@@ -24,7 +24,6 @@ function getCacheKey(text, lang) {
 
 function cacheSet(key, value) {
   if (audioCache.size >= MAX_CACHE_SIZE) {
-    // evict the oldest entry
     audioCache.delete(audioCache.keys().next().value);
   }
   audioCache.set(key, value);
@@ -67,6 +66,11 @@ const ADVICE_MAP = {
     'gu-IN': 'અત્યંત ગંભીર જોખમ. શક્ય હોય તો તડકામાં કામ તરત જ અટકાવો.',
     'en-IN': 'Extreme danger. Stay indoors if possible.',
   },
+  'Normal conditions. Drink water every 30 minutes before feeling thirsty. Keep ORS packet handy.': {
+    'hi-IN': 'सामान्य स्थितियाँ। प्यास लगने से पहले हर 30 मिनट में पानी पिएं। ORS पैकेट पास रखें।',
+    'gu-IN': 'સામાન્ય સ્થિતિ. તરસ લાગે તે પહેલાં દર ૩૦ મિનિટે પાણી પીઓ. ORS પેકેટ સાથે રાખો.',
+    'en-IN': 'Normal conditions. Drink water every 30 minutes before feeling thirsty. Keep ORS packet handy.',
+  },
 };
 
 /**
@@ -87,10 +91,32 @@ router.post('/', ttsLimiter, protect, async (req, res) => {
 
     const languageCode = LANG_CODE_MAP[lang] || 'en-IN';
 
-    // Guard against English text being sent with hi-IN or gu-IN
+    if (!process.env.SARVAM_API_KEY) {
+      return res.status(500).json({ error: 'SARVAM_API_KEY not configured' });
+    }
+
+    const client = new SarvamAIClient({
+      apiSubscriptionKey: process.env.SARVAM_API_KEY,
+    });
+
+    // Guard against English text being spoken under hi-IN or gu-IN
     let textToSpeak = text.trim();
     if (ADVICE_MAP[textToSpeak] && ADVICE_MAP[textToSpeak][languageCode]) {
       textToSpeak = ADVICE_MAP[textToSpeak][languageCode];
+    } else if (languageCode !== 'en-IN' && /[a-zA-Z]{3,}/.test(textToSpeak)) {
+      // If text contains English words and target language is Gujarati or Hindi, translate first
+      try {
+        const trRes = await client.text.translate({
+          input: textToSpeak,
+          source_language_code: 'en-IN',
+          target_language_code: languageCode,
+        });
+        if (trRes && trRes.translated_text) {
+          textToSpeak = trRes.translated_text.trim();
+        }
+      } catch (trErr) {
+        console.warn('[TTS] Automatic translation warning:', trErr?.message || trErr);
+      }
     }
 
     const cacheKey = getCacheKey(textToSpeak, languageCode);
@@ -100,22 +126,14 @@ router.post('/', ttsLimiter, protect, async (req, res) => {
       return res.json({ audio: audioCache.get(cacheKey), lang: languageCode, cached: true });
     }
 
-    if (!process.env.SARVAM_API_KEY) {
-      return res.status(500).json({ error: 'SARVAM_API_KEY not configured' });
-    }
-
-    const client = new SarvamAIClient({
-      apiSubscriptionKey: process.env.SARVAM_API_KEY,
-    });
-
+    // Call Sarvam text-to-speech with proper language_code and bulbul:v3 model
     const response = await client.textToSpeech.convert({
-      inputs: [textToSpeak],
-      target_language_code: languageCode,
+      text: textToSpeak,
+      language_code: languageCode,
       model: 'bulbul:v3',
       speaker: 'ritu',
     });
 
-    // bulbul returns an array of base64 audio strings in response.audios
     const audios = response.audios || response.audio;
     if (!audios || audios.length === 0) {
       return res.status(502).json({ error: 'No audio returned from Sarvam TTS' });
@@ -127,7 +145,6 @@ router.post('/', ttsLimiter, protect, async (req, res) => {
     return res.json({ audio: audioBase64, lang: languageCode });
   } catch (err) {
     console.error('[TTS] Sarvam error:', err?.message || err, err?.body || '');
-    // Return 503 so the frontend can show a graceful fallback
     return res.status(503).json({
       error: 'TTS service temporarily unavailable',
       details: err?.message || 'Sarvam API error'
