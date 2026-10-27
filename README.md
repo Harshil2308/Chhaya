@@ -7,73 +7,84 @@
 ## 📌 Table of Contents
 1. [Project Overview](#-project-overview)
 2. [Key Features](#-key-features)
-3. [Tech Stack & Dependencies](#-tech-stack--dependencies)
-4. [Folder Structure](#-folder-structure)
-5. [Environment Setup (`.env`)](#-environment-setup-env)
-6. [Installation & Getting Started](#-installation--getting-started)
-7. [Running the Application](#-running-the-application)
-8. [API Endpoint Reference](#-api-endpoint-reference)
-9. [Git & Collaboration Best Practices](#-git--collaboration-best-practices)
-10. [Troubleshooting & FAQ](#-troubleshooting--faq)
+3. [Role-Based Portals](#-role-based-portals)
+4. [Tech Stack & Dependencies](#-tech-stack--dependencies)
+5. [Folder Structure](#-folder-structure)
+6. [Environment Setup (`.env`)](#-environment-setup-env)
+7. [Installation & Getting Started](#-installation--getting-started)
+8. [Running the Application](#-running-the-application)
+9. [API Endpoint Reference](#-api-endpoint-reference)
+10. [Git & Collaboration Best Practices](#-git--collaboration-best-practices)
+11. [Troubleshooting & FAQ](#-troubleshooting--faq)
 
 ---
 
 ## 🚀 Project Overview
 
-Extreme heat events and heatwaves in India present severe occupational hazards for millions of unorganized and daily-wage outdoor workers. Unlike office workers, they cannot simply choose to stay indoors.
+Extreme heat events and heatwaves in India present severe occupational hazards for millions of unorganized and daily-wage outdoor workers. Unlike indoor office workers, they cannot simply avoid the sun during peak hours.
 
-**Chhaya (छाया)** bridges this gap by translating real-time meteorological conditions into practical, actionable safety guidance:
+**Chhaya (छाया)** bridges this gap by translating real-time meteorological conditions into practical, life-saving safety guidance:
 - Evaluates real-feel danger using the **Heat Index** (combining ambient temperature and relative humidity).
-- Delivers **occupation-tailored work-rest cycles and hydration reminders** (e.g. for construction laborers carrying heavy loads vs. delivery personnel on bikes).
-- Provides an **interactive map of nearby verified cooling centers, shaded rest areas, and drinking water points**.
-- Features an **emergency SOS response system** with 108 emergency calling and instant WhatsApp location dispatch.
-- Accommodates language and literacy barriers through **multilingual support (English, हिन्दी, ગુજરાતી)** and **voice read-aloud via Sarvam AI**.
+- Delivers **occupation-tailored work-rest cycles and hydration reminders** (e.g., construction workers carrying heavy loads vs. delivery personnel on two-wheelers).
+- Provides an **interactive map of nearby verified cooling centers, shaded rest areas, and drinking water points** with direct navigation.
+- Features an **emergency SOS response system** with 108 emergency calling, a dedicated national heat helpline, and instant WhatsApp location dispatch.
+- Accommodates language and literacy barriers through **multilingual support (English, हिन्दी, ગુજરાતી)** and **high-fidelity voice read-aloud via Sarvam AI (`bulbul:v3`)**.
+- Offers a dedicated **Manager Dashboard** for site supervisors to enforce safety protocols and monitor worker hydration in real time.
 
 ---
 
 ## ✨ Key Features
 
 ### 🌡️ 1. Live Heat-Risk Alerts (Heat Index Based)
-* Calculates real-feel temperature and heat danger levels (**Low**, **Moderate**, **High**, **Extreme**) using live weather data from OpenWeatherMap.
-* Automatically defaults to key urban centers (e.g., Ahmedabad) with seamless fallback if a city is not found.
+* Calculates real-feel temperature and heat danger levels (**Low**, **Moderate**, **High**, **Very High**, **Extreme**) using live weather data from OpenWeatherMap.
+* Automatically defaults to key urban centers (e.g., Ahmedabad) with offline fallbacks so the UI remains reliable under network constraints.
 
 ### 🛡️ 2. Occupation-Tailored Safety Guidance
 * Workers select their trade (**Construction**, **Farmer**, **Delivery Partner**, **Street Vendor**, or **Other**).
-* Advisories adjust specifically to physical workload: hydration schedules, required rest intervals per working hour, and clothing recommendations.
+* Safety advisories dynamically adjust to physical exertion levels: personalized hydration schedules, required rest intervals per working hour, and clothing recommendations.
 
 ### ⏰ 3. Safe Shift Planner (24-Hour Forecast)
-* Breaks down the upcoming 24-hour weather forecast into 3-hour windows.
-* Flags high-danger afternoon peak heat hours and identifies safer morning/evening work windows.
+* Visualizes the upcoming 24-hour weather timeline broken down into 3-hour windows.
+* Flags hazardous afternoon peak heat hours (11:00 AM – 4:00 PM) and recommends safe morning and evening work windows.
 
 ### 📍 4. Nearby Cooling Centers & Interactive Map
-* Built with Leaflet to display verified cooling facilities, government shelters, and public drinking water stations.
-* Uses the Haversine formula to compute exact distance from the worker's device to the nearest shelter.
+* Built with Leaflet to display verified cooling facilities, government shelters, shaded pavilions, and public drinking water points.
+* Uses the Haversine formula to compute exact distance from the worker's device to each shelter.
+* One-click Google Maps direction links for fast navigation.
 
 ### 🚨 5. Crowdsourced Hotspot Reporting
 * Field workers and supervisors can report hazardous heat spots, unshaded worksites, or drinking water shortages directly on the map.
-* Admin dashboard enables reviewing and updating hotspot statuses.
+* Admin dashboard allows reviewing, verifying, and updating hotspot statuses (**Pending**, **Verified**, **Resolved**).
 
-### 🆘 6. Emergency SOS (108 + WhatsApp Dispatch)
+### 🆘 6. Emergency SOS (108 + Heat Helpline + WhatsApp Dispatch)
 * One-tap direct dialer to India's National Ambulance Service (`tel:108`).
-* Instant WhatsApp SOS trigger sending live GPS coordinates and predefined emergency messages to registered emergency contacts.
+* Instant dialer to the National Heat Helpline (`1800-180-1104`).
+* Instant WhatsApp SOS trigger sending live GPS coordinates and emergency distress messages to registered contacts.
 
 ### 🩹 7. First-Aid Heat Illness Guide
 * Rapid, illustrated guidance for identifying symptoms and taking first-aid actions for:
-  * Heat Stroke (Emergency)
+  * Heat Stroke (Emergency medical protocol)
   * Heat Exhaustion
   * Heat Cramps
   * Heat Rash
   * Dehydration
 
-### 🗣️ 8. Multilingual & Voice Read-Aloud
+### 🗣️ 8. Multilingual Support & Sarvam AI Voice Read-Aloud
 * Full UI static localization across 3 languages: **English**, **Hindi (हिन्दी)**, and **Gujarati (ગુજરાતી)**.
-* Integrated audio read-aloud powered by Sarvam AI (`bulbul:v1`) with browser SpeechSynthesis fallback for low-literacy workers.
-* Multilingual heat-safety AI conversational assistant for on-demand worker queries.
+* Integrated Indian-language TTS powered by Sarvam AI (`bulbul:v3`, speaker `ritu`) with automated Indic translation, in-memory MD5 caching, and native browser SpeechSynthesis fallback for low-literacy workers.
+* AI conversational heat-safety assistant powered by Sarvam AI (`sarvam-105b-conversations`) with rate limiting and emergency phrase interception.
 
-### 👥 9. Role-Based Dashboards & Team Check-Ins
-* **Worker**: Personalized heat index, shift planner, cooling map, hotspot reporting, and emergency SOS.
-* **Manager**: Lightweight team creation, member join codes, and live worker hydration/well-being check-in board.
-* **Admin**: Dedicated administrative portal to add/delete cooling centers and review reported hotspots.
+---
+
+## 👥 Role-Based Portals
+
+Chhaya provides specialized interfaces customized for each user role:
+
+| Role | Route | Key Capabilities |
+| :--- | :--- | :--- |
+| **Worker** | `/dashboard` | Personalized heat index, shift planner, cooling center map with distances, hotspot reporting, team hydration check-in, and emergency SOS dispatch. |
+| **Manager** | `/manager` | Worksite heat conditions overview, 6-step interactive worksite safety checklist, shift planning, cooling center navigation, heat hotspot oversight, and quick emergency actions. |
+| **Admin** | `/admin` | Administrative management: add/delete verified cooling centers, verify or resolve worker-reported hotspots, and audit safety alerts. |
 
 ---
 
@@ -84,7 +95,7 @@ Extreme heat events and heatwaves in India present severe occupational hazards f
 | :--- | :--- | :--- |
 | **React** | `^19.2.8` | Component-based UI framework |
 | **Vite** | `^8.2.0` | Frontend build tool and rapid development server |
-| **React Router DOM** | `^7.18.2` | Client-side routing (`/login`, `/register`, `/dashboard`, `/admin`, `/first-aid`) |
+| **React Router DOM** | `^7.18.2` | Client-side routing (`/login`, `/register`, `/dashboard`, `/manager`, `/admin`, `/first-aid`) |
 | **Leaflet & React-Leaflet** | `^1.9.4` / `^5.0.0` | Interactive mapping for cooling centers and heat hotspots |
 | **Tailwind CSS** | `^4.3.3` | Utility-first CSS styling (via `@tailwindcss/vite`) |
 | **Axios** | `^1.19.0` | HTTP client for backend REST API requests |
@@ -100,7 +111,7 @@ Extreme heat events and heatwaves in India present severe occupational hazards f
 | **Dotenv (`dotenv`)** | `^17.4.2` | Environment variable management |
 | **Cors (`cors`)** | `^2.8.6` | Cross-Origin Resource Sharing middleware |
 | **Express Rate Limit** | `^8.7.1` | API rate limiting (protects TTS and AI assistant endpoints) |
-| **Sarvam AI SDK (`sarvamai`)** | `^1.1.11` | Indian-language TTS and AI safety assistant integration |
+| **Sarvam AI SDK (`sarvamai`)** | `^1.1.11` | Indian-language TTS (`bulbul:v3`) and conversational AI assistant |
 | **Nodemon (`nodemon`)** | `^3.1.14` | Hot-reload development server |
 
 ---
@@ -138,7 +149,7 @@ Chhaya/
 │   │   ├── hotspotRoutes.js
 │   │   ├── speakRoutes.js
 │   │   └── teamRoutes.js
-│   ├── utils/                # Helper utilities (sarvamClient, etc.)
+│   ├── utils/                # Helper utilities (heatIndex, personalRisk, sarvamClient, emergencyCheck)
 │   ├── .env                  # Backend environment secrets (NEVER commit to Git)
 │   ├── .env.example          # Environment variables template
 │   ├── .gitignore            # Backend Git ignore rules
@@ -149,13 +160,13 @@ Chhaya/
     ├── public/               # Public static assets
     ├── src/
     │   ├── assets/           # Project imagery & vector icons
-    │   ├── components/       # Reusable components (HeatHelper, MapView, SunPanel, etc.)
+    │   ├── components/       # Reusable components (HeatHelper, MapView, SunPanel, SafeShiftPlanner, ListenButton, etc.)
     │   ├── context/          # React context providers (AuthContext, LanguageContext)
     │   ├── locales/          # Static translations (English, Hindi, Gujarati)
-    │   ├── pages/            # Application views (Login, Register, UserDashboard, AdminDashboard, FirstAid)
+    │   ├── pages/            # Views (Login, Register, UserDashboard, ManagerDashboard, AdminDashboard, FirstAid)
     │   ├── services/         # Axios instance and API call abstractions
     │   ├── utils/            # Helper functions (geoDistance, personalizedRisk)
-    │   ├── App.jsx           # Top-level routing layout
+    │   ├── App.jsx           # Top-level client routing
     │   └── main.jsx          # React DOM mounting entry point
     ├── .gitignore            # Frontend Git ignore rules
     ├── index.html            # HTML document template
@@ -167,7 +178,7 @@ Chhaya/
 
 ## 🔑 Environment Setup (`.env`)
 
-The backend requires a valid configuration file located at `backend/.env`.
+The backend requires a configuration file located at `backend/.env`.
 
 1. Copy the example template into a real `.env` file:
    ```powershell
@@ -195,7 +206,7 @@ The backend requires a valid configuration file located at `backend/.env`.
    # OpenWeatherMap API Key (Required for live heat index & forecast)
    WEATHER_API_KEY=your_openweathermap_api_key_here
 
-   # Sarvam AI API Key (Optional: for native Indian language voice & assistant)
+   # Sarvam AI API Key (Optional: for native Indian language voice TTS & assistant)
    SARVAM_API_KEY=your_sarvam_ai_key_here
    ```
 
@@ -218,7 +229,7 @@ cd Chhaya
 
 ### 2. Install all dependencies
 
-Choose **any** of the following convenient installation methods:
+Choose **any** of the following installation methods:
 
 * **⚡ Option A: Single Command from Root**
   ```powershell
@@ -277,7 +288,7 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-Open `http://localhost:5173` in your browser. Register an account (select your occupation and language) or log in to access the dashboard.
+Open `http://localhost:5173` in your browser. Register an account (select your occupation, role, and language) or log in to access the dashboard.
 
 ---
 
@@ -311,14 +322,14 @@ All endpoints except authentication and assistant status require an `Authorizati
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/hotspots` | Protected | Retrieve all reported heat hotspots |
 | `POST` | `/api/hotspots` | Protected | Submit a heat hotspot report (`title`, `location`, `intensity`, `description`) |
-| `PUT` | `/api/hotspots/:id` | Admin Only | Update hotspot verification status (`active`, `verified`, `resolved`) |
+| `PUT` | `/api/hotspots/:id` | Admin Only | Update hotspot verification status (`Pending`, `Verified`, `Resolved`) |
 
 ### **5. Voice & Multilingual Assistant**
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/assistant/status` | Public | Check if Sarvam AI multilingual assistant is enabled on the server |
-| `POST` | `/api/assistant` | Protected | Query conversational heat safety assistant (`message`, `language`, `city`) |
-| `POST` | `/api/speak` | Protected | Generate native audio speech via Sarvam AI TTS (`text`, `lang`: `en` \| `hi` \| `gu`) |
+| `POST` | `/api/assistant` | Protected | Query conversational heat safety assistant (`message`, `language`, `city`). Includes 15 req/hr rate limiting and emergency phrase interception. |
+| `POST` | `/api/speak` | Protected | Generate native audio speech via Sarvam AI TTS (`text`, `lang`: `en` \| `hi` \| `gu`). Powered by `bulbul:v3` with Indic translation and audio caching. |
 
 ### **6. Team & Check-In System (Manager Operations)**
 | Method | Endpoint | Access | Description |
@@ -344,7 +355,7 @@ All endpoints except authentication and assistant status require an `Authorizati
    npm run install:all
    ```
 3. **Use Meaningful Commits**:
-   Keep commits focused on specific features or fixes (e.g., `fix: resolve MongoDB connection retry loop`, `feat: add Gujarati TTS voice support`).
+   Keep commits focused on specific features or fixes (e.g., `fix: resolve MongoDB connection retry loop`, `feat: enhance manager worksite safety dashboard`).
 
 ---
 
@@ -375,7 +386,7 @@ All endpoints except authentication and assistant status require an `Authorizati
 
 #### Q5: Voice read-aloud button does not play audio
 * **Cause**: `SARVAM_API_KEY` is not configured.
-* **Fix**: Without a Sarvam AI key, the application automatically falls back to your browser's native Web Speech API synthesis. Configure `SARVAM_API_KEY` in `backend/.env` to enable natural Indian accent voices (`bulbul:v1`).
+* **Fix**: Without a Sarvam AI key, the application automatically falls back to your browser's native Web Speech API synthesis. Configure `SARVAM_API_KEY` in `backend/.env` to enable natural Indian accent voices (`bulbul:v3`, speaker `ritu`).
 
 ---
 
