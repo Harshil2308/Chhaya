@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 import SunPanel from '../components/SunPanel';
@@ -6,6 +6,17 @@ import { LanguageSwitcher } from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
 
 const Spinner = () => <span className="spinner" />;
+
+// ── Criteria evaluator for secure password ──
+const evaluatePassword = (pwd) => {
+  return {
+    length: pwd.length >= 8,
+    upper: /[A-Z]/.test(pwd),
+    lower: /[a-z]/.test(pwd),
+    number: /[0-9]/.test(pwd),
+    special: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(pwd),
+  };
+};
 
 function Register() {
   const { lang, setLang, tr } = useLanguage();
@@ -16,14 +27,54 @@ function Register() {
     role: 'worker',
     occupation: 'other',
     location: '',
-    emergencyContactName: '',
-    emergencyContactPhone: '',
     language: lang || 'en'
   });
-  const [error,   setError]   = useState('');
-  const [success, setSuccess] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error,        setError]        = useState('');
+  const [success,      setSuccess]      = useState('');
+  const [loading,      setLoading]      = useState(false);
   const navigate = useNavigate();
+
+  // Evaluate password live
+  const criteria = useMemo(() => evaluatePassword(formData.password), [formData.password]);
+  const isPasswordSecure = useMemo(() => {
+    return criteria.length && criteria.upper && criteria.lower && criteria.number && criteria.special;
+  }, [criteria]);
+
+  // Compute password strength score (0 to 5)
+  const strength = useMemo(() => {
+    if (!formData.password) {
+      return { score: 0, label: '', color: '#e5e7eb', width: '0%' };
+    }
+    const metCount = Object.values(criteria).filter(Boolean).length;
+    if (metCount <= 2) {
+      return {
+        score: 1,
+        label: tr('register.passwordStrength.weak') || 'Weak',
+        color: '#ef4444',
+        width: '33%'
+      };
+    }
+    if (metCount <= 4) {
+      return {
+        score: 2,
+        label: tr('register.passwordStrength.medium') || 'Medium',
+        color: '#f59e0b',
+        width: '66%'
+      };
+    }
+    return {
+      score: 3,
+      label: tr('register.passwordStrength.strong') || 'Strong',
+      color: '#10b981',
+      width: '100%'
+    };
+  }, [formData.password, criteria, tr]);
+
+  // Phone validation status
+  const phoneStarted = formData.phone.length > 0;
+  const phoneInvalidStart = phoneStarted && !/^[6-9]/.test(formData.phone);
+  const phoneComplete = formData.phone.length === 10 && /^[6-9]\d{9}$/.test(formData.phone);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,19 +84,58 @@ function Register() {
     }
   };
 
+  // Sanitized phone input handler (digits only, max 10)
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData(prev => ({ ...prev, phone: digitsOnly }));
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
+
+    // 1. Validate required fields
+    if (
+      !formData.name.trim() ||
+      !formData.phone.trim() ||
+      !formData.password ||
+      !formData.role ||
+      !formData.occupation ||
+      !formData.location.trim() ||
+      !formData.language
+    ) {
+      setError(tr('register.allFieldsRequired') || 'All fields are required. Please fill in every section.');
+      return;
+    }
+
+    // 2. Validate Indian phone number (10 digits starting with 6-9)
     if (!/^[6-9]\d{9}$/.test(formData.phone)) {
-      setError(tr('register.phoneInvalid'));
+      setError(tr('register.phoneInvalid') || 'Phone number must be a 10-digit number starting with 6, 7, 8, or 9');
       return;
     }
-    if (formData.emergencyContactPhone && !/^[6-9]\d{9}$/.test(formData.emergencyContactPhone)) {
-      setError(tr('register.emergencyContactPhoneInvalid'));
+
+    // 3. Validate secure password
+    if (!isPasswordSecure) {
+      setError(
+        tr('register.passwordInvalid') ||
+        'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+      );
       return;
     }
-    setError(''); setSuccess(''); setLoading(true);
+
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
     try {
-      await API.post('/auth/register', formData);
+      await API.post('/auth/register', {
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        password: formData.password,
+        role: formData.role,
+        occupation: formData.occupation,
+        location: formData.location.trim(),
+        language: formData.language
+      });
       setSuccess(tr('register.registerSuccess'));
       setTimeout(() => navigate('/login'), 1500);
     } catch (err) {
@@ -68,10 +158,10 @@ function Register() {
           <LanguageSwitcher />
         </div>
 
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md my-4">
 
           {/* Brand mark */}
-          <div className="flex items-center gap-2.5 mb-7">
+          <div className="flex items-center gap-2.5 mb-6">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-md"
               style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -89,55 +179,178 @@ function Register() {
           <h1 className="text-[1.7rem] font-extrabold leading-tight mb-1" style={{ color: '#2a1200' }}>
             {tr('register.title')}
           </h1>
-          <p className="text-sm mb-6" style={{ color: '#a0674a' }}>
+          <p className="text-sm mb-5" style={{ color: '#a0674a' }}>
             {tr('register.subtitle')}
           </p>
 
-          {error   && <div className="alert alert-error   mb-4">⚠️ {error}</div>}
+          {error   && <div className="alert alert-error mb-4">⚠️ {error}</div>}
           {success && <div className="alert alert-success mb-4">✅ {success}</div>}
 
           <form onSubmit={handleRegister} className="space-y-4">
 
+            {/* Section: Name & Phone */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Full Name */}
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                  {tr('register.fullName')}
+                  {tr('register.fullName')} <span className="text-red-500 font-bold">*</span>
                 </label>
-                <input name="name" type="text" value={formData.name} onChange={handleChange}
-                  required placeholder={tr('register.fullNamePlaceholder')} className="chhaya-input" />
+                <input
+                  name="name"
+                  type="text"
+                  value={formData.name}
+                  onChange={handleChange}
+                  required
+                  placeholder={tr('register.fullNamePlaceholder')}
+                  className="chhaya-input"
+                />
               </div>
+
+              {/* Phone Number with 6-9 constraint */}
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                  {tr('register.phone')}
+                  {tr('register.phone')} <span className="text-red-500 font-bold">*</span>
                 </label>
-                <input name="phone" type="text" value={formData.phone} onChange={handleChange}
-                  required placeholder={tr('register.phonePlaceholder')} className="chhaya-input" />
+                <div className="relative">
+                  <input
+                    name="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    value={formData.phone}
+                    onChange={handlePhoneChange}
+                    required
+                    placeholder={tr('register.phonePlaceholder')}
+                    className={`chhaya-input pr-14 ${
+                      phoneInvalidStart
+                        ? 'border-red-400 bg-red-50/60'
+                        : phoneComplete
+                        ? 'border-emerald-400'
+                        : ''
+                    }`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-400 select-none">
+                    {formData.phone.length}/10
+                  </span>
+                </div>
+                {/* Real-time hint / validation message */}
+                {phoneInvalidStart ? (
+                  <p className="text-[11px] font-semibold text-red-600 mt-1 flex items-center gap-1">
+                    <span>⚠️</span>
+                    <span>{tr('register.phoneInvalid')}</span>
+                  </p>
+                ) : phoneStarted && formData.phone.length < 10 ? (
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    {tr('register.phoneStartHint')}
+                  </p>
+                ) : null}
               </div>
             </div>
 
+            {/* Section: Secure Password */}
             <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                {tr('register.password')}
-              </label>
-              <input name="password" type="password" value={formData.password} onChange={handleChange}
-                required placeholder={tr('register.passwordPlaceholder')} className="chhaya-input" />
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-semibold" style={{ color: '#5c2a0a' }}>
+                  {tr('register.password')} <span className="text-red-500 font-bold">*</span>
+                </label>
+                {formData.password && (
+                  <span className="text-xs font-bold" style={{ color: strength.color }}>
+                    {strength.label}
+                  </span>
+                )}
+              </div>
+
+              <div className="relative">
+                <input
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder={tr('register.passwordPlaceholder')}
+                  className="chhaya-input pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(prev => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 transition-colors p-1"
+                  aria-label={showPassword ? tr('register.hidePassword') : tr('register.showPassword')}
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              {/* Password strength bar & criteria checklist */}
+              {formData.password && (
+                <div className="mt-2 space-y-2">
+                  <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="h-full transition-all duration-300 rounded-full"
+                      style={{ width: strength.width, backgroundColor: strength.color }}
+                    />
+                  </div>
+
+                  <div className="bg-white/80 border border-orange-200/70 rounded-xl p-3 text-xs space-y-1.5 shadow-xs">
+                    <p className="font-semibold text-gray-700 mb-1">
+                      {tr('register.passwordRequirementsTitle')}
+                    </p>
+                    {[
+                      { key: 'length',  label: tr('register.passwordCriteria.length'),  met: criteria.length },
+                      { key: 'upper',   label: tr('register.passwordCriteria.upper'),   met: criteria.upper },
+                      { key: 'lower',   label: tr('register.passwordCriteria.lower'),   met: criteria.lower },
+                      { key: 'number',  label: tr('register.passwordCriteria.number'),  met: criteria.number },
+                      { key: 'special', label: tr('register.passwordCriteria.special'), met: criteria.special },
+                    ].map((item) => (
+                      <div key={item.key} className="flex items-center gap-2">
+                        {item.met ? (
+                          <span className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] font-bold">
+                            ✓
+                          </span>
+                        ) : (
+                          <span className="w-4 h-4 rounded-full bg-gray-200 text-gray-400 flex items-center justify-center text-[10px]">
+                            •
+                          </span>
+                        )}
+                        <span className={item.met ? 'text-emerald-700 font-medium' : 'text-gray-500'}>
+                          {item.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Section: Role & Occupation */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                  {tr('register.role')}
+                  {tr('register.role')} <span className="text-red-500 font-bold">*</span>
                 </label>
-                <select name="role" value={formData.role} onChange={handleChange} className="chhaya-input">
+                <select name="role" value={formData.role} onChange={handleChange} required className="chhaya-input">
                   <option value="worker">{tr('register.roleWorker')}</option>
                   <option value="manager">{tr('register.roleManager')}</option>
                 </select>
               </div>
+
               <div>
                 <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                  {tr('register.occupation')}
+                  {tr('register.occupation')} <span className="text-red-500 font-bold">*</span>
                 </label>
-                <select name="occupation" value={formData.occupation} onChange={handleChange} className="chhaya-input">
+                <select name="occupation" value={formData.occupation} onChange={handleChange} required className="chhaya-input">
                   <option value="construction">{tr('register.occupations.construction')}</option>
                   <option value="farmer">{tr('register.occupations.farmer')}</option>
                   <option value="delivery">{tr('register.occupations.delivery')}</option>
@@ -147,12 +360,21 @@ function Register() {
               </div>
             </div>
 
+            {/* Section: Location / City */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                {tr('register.location')}
+                {tr('register.location')} <span className="text-red-500 font-bold">*</span>
               </label>
-              <input name="location" type="text" list="city-options" value={formData.location} onChange={handleChange}
-                placeholder={tr('register.locationPlaceholder')} className="chhaya-input" />
+              <input
+                name="location"
+                type="text"
+                list="city-options"
+                value={formData.location}
+                onChange={handleChange}
+                required
+                placeholder={tr('register.locationPlaceholder')}
+                className="chhaya-input"
+              />
               <datalist id="city-options">
                 <option value="Ahmedabad" />
                 <option value="Surat" />
@@ -175,19 +397,19 @@ function Register() {
               </datalist>
             </div>
 
-            {/* Preferred Language */}
+            {/* Section: Preferred Language */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                {tr('register.preferredLanguage')}
+                {tr('register.preferredLanguage')} <span className="text-red-500 font-bold">*</span>
               </label>
-              <select name="language" value={formData.language} onChange={handleChange} className="chhaya-input">
+              <select name="language" value={formData.language} onChange={handleChange} required className="chhaya-input">
                 <option value="en">English</option>
                 <option value="hi">हिन्दी (Hindi)</option>
                 <option value="gu">ગુજરાતી (Gujarati)</option>
               </select>
             </div>
 
-            <button type="submit" disabled={loading} className="chhaya-btn-primary w-full py-3.5 mt-1">
+            <button type="submit" disabled={loading} className="chhaya-btn-primary w-full py-3.5 mt-2">
               {loading ? <><Spinner /> {tr('register.creatingAccount')}</> : tr('register.createAccount')}
             </button>
           </form>

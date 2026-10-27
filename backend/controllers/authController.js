@@ -17,23 +17,54 @@ const register = async (req, res) => {
       language
     } = req.body;
 
-    // Phone number validation
+    // Check all required sections
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Full Name is required' });
+    }
+    if (!phone || !phone.trim()) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
+    if (!password) {
+      return res.status(400).json({ message: 'Password is required' });
+    }
+    if (!location || !location.trim()) {
+      return res.status(400).json({ message: 'Location / City is required' });
+    }
+
+    // Phone number validation: must be 10 digits starting with 6, 7, 8, or 9
     const phoneRegex = /^[6-9]\d{9}$/;
-    if (!phoneRegex.test(phone)) {
+    if (!phoneRegex.test(phone.trim())) {
       return res.status(400).json({
-        message: 'Please enter a valid 10-digit Indian mobile number'
+        message: 'Phone number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9'
+      });
+    }
+
+    // Secure password validation: at least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    if (typeof password !== 'string' || password.length < 8) {
+      return res.status(400).json({
+        message: 'Password must be at least 8 characters long'
+      });
+    }
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
       });
     }
 
     // Emergency contact phone validation (if provided)
-    if (emergencyContactPhone && !phoneRegex.test(emergencyContactPhone)) {
+    if (emergencyContactPhone && emergencyContactPhone.trim() && !phoneRegex.test(emergencyContactPhone.trim())) {
       return res.status(400).json({
-        message: 'Emergency contact phone must be a valid 10-digit Indian mobile number'
+        message: 'Emergency contact phone must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9'
       });
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ phone });
+    const existingUser = await User.findOne({ phone: phone.trim() });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -47,16 +78,19 @@ const register = async (req, res) => {
       ? occupation.toLowerCase().trim()
       : 'other';
 
+    const validRoles = ['worker', 'manager', 'admin'];
+    const sanitizedRole = role && validRoles.includes(role) ? role : 'worker';
+
     const validLanguages = ['en', 'hi', 'gu'];
     const sanitizedLanguage = language && validLanguages.includes(language) ? language : 'en';
 
     const user = await User.create({
-      name,
-      phone,
+      name: name.trim(),
+      phone: phone.trim(),
       password: hashedPassword,
-      role: role || 'worker',
+      role: sanitizedRole,
       occupation: sanitizedOccupation,
-      location: location || '',
+      location: location.trim(),
       emergencyContactName: emergencyContactName ? emergencyContactName.trim() : '',
       emergencyContactPhone: emergencyContactPhone ? emergencyContactPhone.trim() : '',
       language: sanitizedLanguage
