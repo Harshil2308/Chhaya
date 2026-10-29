@@ -90,9 +90,9 @@ Chhaya provides specialized interfaces customized for each user role:
 
 | Role | Phone | Password | Target Portal | Notes |
 | :--- | :--- | :--- | :--- | :--- |
+| **Admin** | `9876504321` | `Admin@123` | `/admin` | Fixed controlled admin account. Seed with `npm run seed:admin` |
 | **Manager** | `9876501234` | `Manager@123` | `/manager` | Fixed controlled manager account. Seed with `npm run seed:manager` |
 | **Worker** | *Any valid 10-digit* | User-chosen | `/dashboard` | Self-register on `/register` (public registration is restricted to worker) |
-| **Admin** | Database-managed | Pre-configured in DB | `/admin` | Managed directly via database |
 
 ---
 
@@ -298,23 +298,26 @@ npm run dev:frontend
 
 ### Pre-Configuring the Official Manager Account
 
-To seed or verify the official fixed Manager account, run:
+### Pre-Configuring the Official Manager & Admin Accounts
+
+To seed or verify the official fixed Manager and Admin accounts, run:
 
 ```powershell
-# From project root
+# Seed Manager Account (Phone: 9876501234, Password: Manager@123)
 npm run seed:manager
+# Or: node backend/scripts/seedManager.js
 
-# Or from backend directory
-cd backend && node scripts/seedManager.js
+# Seed Admin Account (Phone: 9876504321, Password: Admin@123)
+npm run seed:admin
+# Or: node backend/scripts/seedAdmin.js
 ```
-
-This creates or updates the official manager account:
-* **Phone:** `9876501234`
-* **Password:** `Manager@123`
 
 ---
 
-Open `http://localhost:5173` in your browser. Register a new worker account on `/register` (public registration is restricted to Worker accounts) or log in with the seeded manager credentials (`9876501234` / `Manager@123`) to access the Manager Dashboard.
+Open `http://localhost:5173` in your browser:
+* **Worker:** Register on `/register` (public registration is restricted to Worker accounts) and land on `/dashboard`.
+* **Manager:** Log in with `9876501234` / `Manager@123` to land on `/manager`.
+* **Admin:** Log in with `9876504321` / `Admin@123` to land on `/admin`.
 
 ---
 

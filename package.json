@@ -10,7 +10,8 @@
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
     "start": "npm --prefix backend start",
-    "seed:manager": "npm --prefix backend run seed:manager"
+    "seed:manager": "npm --prefix backend run seed:manager",
+    "seed:admin": "npm --prefix backend run seed:admin"
   },
   "repository": {
     "type": "git",

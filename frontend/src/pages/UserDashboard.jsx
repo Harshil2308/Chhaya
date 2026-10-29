@@ -483,6 +483,8 @@ function UserDashboard() {
     const token = localStorage.getItem('token');
     if (!token || !storedUser) { navigate('/login'); return; }
     const parsedUser = JSON.parse(storedUser);
+    if (parsedUser.role === 'admin')   { navigate('/admin');   return; }
+    if (parsedUser.role === 'manager') { navigate('/manager'); return; }
     setUser(parsedUser);
     // Tell LanguageContext a user was loaded (re-syncs language from user.language)
     window.dispatchEvent(new Event('chhaya-user-loaded'));
