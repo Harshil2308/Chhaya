@@ -78,8 +78,8 @@ const register = async (req, res) => {
       ? occupation.toLowerCase().trim()
       : 'other';
 
-    const validRoles = ['worker', 'manager', 'admin'];
-    const sanitizedRole = role && validRoles.includes(role) ? role : 'worker';
+    // Public registration is strictly for workers; prevents privilege escalation
+    const sanitizedRole = 'worker';
 
     const validLanguages = ['en', 'hi', 'gu'];
     const sanitizedLanguage = language && validLanguages.includes(language) ? language : 'en';

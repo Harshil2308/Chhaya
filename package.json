@@ -9,7 +9,8 @@
     "install:frontend": "npm --prefix frontend install",
     "dev:backend": "npm --prefix backend run dev",
     "dev:frontend": "npm --prefix frontend run dev",
-    "start": "npm --prefix backend start"
+    "start": "npm --prefix backend start",
+    "seed:manager": "npm --prefix backend run seed:manager"
   },
   "repository": {
     "type": "git",

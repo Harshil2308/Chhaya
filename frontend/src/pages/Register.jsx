@@ -131,7 +131,7 @@ function Register() {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
-        role: formData.role,
+        role: 'worker',
         occupation: formData.occupation,
         location: formData.location.trim(),
         language: formData.language
@@ -342,7 +342,6 @@ function Register() {
                 </label>
                 <select name="role" value={formData.role} onChange={handleChange} required className="chhaya-input">
                   <option value="worker">{tr('register.roleWorker')}</option>
-                  <option value="manager">{tr('register.roleManager')}</option>
                 </select>
               </div>
 

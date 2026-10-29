@@ -86,6 +86,14 @@ Chhaya provides specialized interfaces customized for each user role:
 | **Manager** | `/manager` | Worksite heat conditions overview, 6-step interactive worksite safety checklist, shift planning, cooling center navigation, heat hotspot oversight, and quick emergency actions. |
 | **Admin** | `/admin` | Administrative management: add/delete verified cooling centers, verify or resolve worker-reported hotspots, and audit safety alerts. |
 
+### 👤 Demo & Seeded Accounts
+
+| Role | Phone | Password | Target Portal | Notes |
+| :--- | :--- | :--- | :--- | :--- |
+| **Manager** | `9876501234` | `Manager@123` | `/manager` | Fixed controlled manager account. Seed with `npm run seed:manager` |
+| **Worker** | *Any valid 10-digit* | User-chosen | `/dashboard` | Self-register on `/register` (public registration is restricted to worker) |
+| **Admin** | Database-managed | Pre-configured in DB | `/admin` | Managed directly via database |
+
 ---
 
 ## 🛠 Tech Stack & Dependencies
@@ -288,7 +296,25 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-Open `http://localhost:5173` in your browser. Register an account (select your occupation, role, and language) or log in to access the dashboard.
+### Pre-Configuring the Official Manager Account
+
+To seed or verify the official fixed Manager account, run:
+
+```powershell
+# From project root
+npm run seed:manager
+
+# Or from backend directory
+cd backend && node scripts/seedManager.js
+```
+
+This creates or updates the official manager account:
+* **Phone:** `9876501234`
+* **Password:** `Manager@123`
+
+---
+
+Open `http://localhost:5173` in your browser. Register a new worker account on `/register` (public registration is restricted to Worker accounts) or log in with the seeded manager credentials (`9876501234` / `Manager@123`) to access the Manager Dashboard.
 
 ---
 
@@ -299,7 +325,7 @@ All endpoints except authentication and assistant status require an `Authorizati
 ### **1. Authentication (`/api/auth`)**
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Register user (`name`, `phone`, `password`, `role`, `occupation`, `location`, `emergencyContactName`, `emergencyContactPhone`, `language`) |
+| `POST` | `/api/auth/register` | Public | Register user (`name`, `phone`, `password`, `occupation`, `location`, `language`). Registration is strictly restricted to `worker` role; attempts to register manager/admin are enforced to worker. |
 | `POST` | `/api/auth/login` | Public | Authenticate with `phone` & `password`; returns JWT token & user object |
 | `GET` | `/api/auth/me` | Protected | Fetch current authenticated user's profile |
 | `PUT` | `/api/auth/me` | Protected | Update profile, occupation, city location, or preferred language |
