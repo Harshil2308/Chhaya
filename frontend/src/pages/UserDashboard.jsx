@@ -279,47 +279,78 @@ function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
             )}
           </div>
 
-          {/* Emergency Contact */}
-          {savedPhone ? (
-            <div
-              className="rounded-2xl p-3.5"
-              style={{ background: '#fff7ed', border: '1px solid #fdba74' }}
-            >
-              <p className="text-xs font-bold text-orange-700 uppercase tracking-wide mb-1">
-                {tr('sos.savedContact')}
-              </p>
-              <p className="text-sm font-extrabold text-gray-900">{savedName}</p>
-              <p className="text-sm text-gray-600">+91 {normalizedPhone || savedPhone}</p>
+          {/* Emergency Contacts Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-orange-950 flex items-center gap-1.5">
+                <span>🆘</span>
+                <span>{tr('sos.emergencyContactsSection') || 'Emergency Contacts'}</span>
+              </h3>
             </div>
-          ) : (
-            <div
-              className="rounded-2xl p-3.5"
-              style={{ background: '#fef9c3', border: '1px solid #fde68a' }}
-            >
-              <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-2">
-                {tr('sos.enterContactLabel')}
-              </p>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-gray-600 bg-gray-100 px-2.5 py-2 rounded-xl">
-                  +91
-                </span>
-                <input
-                  id="sos-manual-phone-input"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={10}
-                  value={manualPhone}
-                  onChange={(e) =>
-                    setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
-                  }
-                  placeholder={tr('sos.contactPlaceholder')}
-                  className="chhaya-input text-sm flex-1"
-                  style={{ background: '#ffffff' }}
-                />
+
+            {savedPhone ? (
+              <div
+                id="sos-saved-contact-card"
+                className="rounded-2xl p-4 transition-all"
+                style={{ background: '#fff7ed', border: '1.5px solid #fdba74' }}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold text-orange-700 uppercase tracking-wide">
+                      {tr('sos.savedContact') || 'Emergency Contact'}
+                    </p>
+                    <p className="text-base font-extrabold text-gray-900 mt-0.5">{savedName}</p>
+                    <p className="text-sm font-semibold text-orange-800 mt-0.5">
+                      +91 {normalizedPhone || savedPhone}
+                    </p>
+                  </div>
+                  <span className="text-2xl">📞</span>
+                </div>
               </div>
-              <p className="text-[11px] text-yellow-600 mt-1">{tr('sos.enterContactHint')}</p>
-            </div>
-          )}
+            ) : (
+              <div
+                id="sos-missing-contact-warning"
+                className="rounded-2xl p-4 text-left border space-y-3"
+                style={{ background: '#fffbeb', borderColor: '#fcd34d', color: '#92400e' }}
+              >
+                <div className="flex items-start gap-2.5">
+                  <span className="text-xl">⚠️</span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wide text-amber-900">
+                      {tr('sos.noContactTitle') || 'Emergency Contact Notice'}
+                    </p>
+                    <p className="text-sm font-semibold text-amber-900 mt-0.5">
+                      No emergency contact saved. Please update your profile.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="pt-2.5 border-t border-amber-200/80">
+                  <p className="text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                    {tr('sos.enterContactLabel')}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-600 bg-gray-100 px-2.5 py-2 rounded-xl">
+                      +91
+                    </span>
+                    <input
+                      id="sos-manual-phone-input"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={manualPhone}
+                      onChange={(e) =>
+                        setManualPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
+                      }
+                      placeholder={tr('sos.contactPlaceholder')}
+                      className="chhaya-input text-sm flex-1 bg-white"
+                    />
+                  </div>
+                  <p className="text-[11px] text-yellow-700 mt-1">{tr('sos.enterContactHint')}</p>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Status feedback alerts */}
           {sending && gpsStatus === 'locating' && (
@@ -367,12 +398,12 @@ function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
 
           {/* Action Buttons */}
           <div className="space-y-2.5">
-            {/* ── Call 108 — primary CTA ── */}
-            <button
+            {/* ── 1) Call 108 — Ambulance ── */}
+            <a
               id="sos-call-108"
-              type="button"
+              href="tel:108"
               onClick={() => callNumber('108')}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98] no-underline shadow-md"
               style={{
                 background: 'linear-gradient(135deg,#dc2626,#b91c1c)',
                 boxShadow: '0 4px 16px rgba(220,38,38,0.4)'
@@ -380,15 +411,36 @@ function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
             >
               <span className="text-xl">🚑</span>
               <span>{tr('sos.call108')}</span>
-            </button>
+            </a>
 
-            {/* ── WhatsApp SOS — guaranteed to include live maps link ── */}
+            {/* ── 2) Call Emergency Contact ── */}
+            {savedPhone && (
+              <a
+                id="sos-call-emergency-contact"
+                href={`tel:${normalizedPhone || savedPhone}`}
+                onClick={() => callNumber(normalizedPhone || savedPhone)}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98] no-underline shadow-md"
+                style={{
+                  background: 'linear-gradient(135deg,#ea580c,#c2410c)',
+                  boxShadow: '0 4px 16px rgba(234,88,12,0.35)'
+                }}
+              >
+                <span className="text-xl">📞</span>
+                <span>
+                  {savedName
+                    ? `${tr('sos.callContact') || 'Call'} ${savedName}`
+                    : (tr('sos.callEmergencyContact') || 'Call Emergency Contact')}
+                </span>
+              </a>
+            )}
+
+            {/* ── 3) WhatsApp SOS ── */}
             <button
               id="sos-whatsapp-btn"
               type="button"
               onClick={handleWhatsApp}
               disabled={!isPhoneValid || sending}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-2xl font-extrabold text-white text-base transition-all cursor-pointer border-0 active:scale-[0.98]"
               style={
                 isPhoneValid && !sending
                   ? {
@@ -420,11 +472,11 @@ function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
             </button>
 
             {/* ── Heat Helpline ── */}
-            <button
+            <a
               id="sos-heat-helpline-btn"
-              type="button"
+              href="tel:18001801104"
               onClick={() => callNumber('18001801104')}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm transition-all border cursor-pointer hover:bg-orange-50 active:scale-[0.98]"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl font-bold text-sm transition-all border cursor-pointer hover:bg-orange-50 active:scale-[0.98] no-underline"
               style={{
                 background: '#fff7ed',
                 color: '#c2410c',
@@ -433,7 +485,7 @@ function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
             >
               <span className="text-lg">🌡️</span>
               <span>{tr('sos.heatHelpline')}</span>
-            </button>
+            </a>
           </div>
 
           {/* Close */}
@@ -488,6 +540,19 @@ function UserDashboard() {
     setUser(parsedUser);
     // Tell LanguageContext a user was loaded (re-syncs language from user.language)
     window.dispatchEvent(new Event('chhaya-user-loaded'));
+
+    // Fetch latest user data from backend to ensure emergency contacts and profile are up to date
+    API.get('/auth/me')
+      .then((res) => {
+        if (res.data) {
+          setUser((prev) => ({ ...prev, ...res.data }));
+          localStorage.setItem('user', JSON.stringify({ ...parsedUser, ...res.data }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Profile sync on dashboard mount:', err?.message);
+      });
+
     const city = parsedUser.location || 'Ahmedabad';
     const job = parsedUser.occupation || 'other';
     setReportData(prev => ({ ...prev, city }));

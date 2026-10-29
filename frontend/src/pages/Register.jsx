@@ -27,6 +27,8 @@ function Register() {
     role: 'worker',
     occupation: 'other',
     location: '',
+    emergencyContactName: '',
+    emergencyContactPhone: '',
     language: lang || 'en'
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -76,6 +78,11 @@ function Register() {
   const phoneInvalidStart = phoneStarted && !/^[6-9]/.test(formData.phone);
   const phoneComplete = formData.phone.length === 10 && /^[6-9]\d{9}$/.test(formData.phone);
 
+  // Emergency contact phone validation status
+  const emPhoneStarted = formData.emergencyContactPhone.length > 0;
+  const emPhoneInvalidStart = emPhoneStarted && !/^[6-9]/.test(formData.emergencyContactPhone);
+  const emPhoneComplete = formData.emergencyContactPhone.length === 10 && /^[6-9]\d{9}$/.test(formData.emergencyContactPhone);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -90,6 +97,12 @@ function Register() {
     setFormData(prev => ({ ...prev, phone: digitsOnly }));
   };
 
+  // Sanitized emergency contact phone input handler (digits only, max 10)
+  const handleEmergencyPhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData(prev => ({ ...prev, emergencyContactPhone: digitsOnly }));
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
 
@@ -101,8 +114,18 @@ function Register() {
       !formData.role ||
       !formData.occupation ||
       !formData.location.trim() ||
+      !formData.emergencyContactName.trim() ||
+      !formData.emergencyContactPhone.trim() ||
       !formData.language
     ) {
+      if (!formData.emergencyContactName.trim()) {
+        setError(tr('register.emergencyContactNameRequired') || 'Emergency Contact Name is required');
+        return;
+      }
+      if (!formData.emergencyContactPhone.trim()) {
+        setError(tr('register.emergencyContactPhoneRequired') || 'Emergency Contact Phone is required');
+        return;
+      }
       setError(tr('register.allFieldsRequired') || 'All fields are required. Please fill in every section.');
       return;
     }
@@ -113,7 +136,16 @@ function Register() {
       return;
     }
 
-    // 3. Validate secure password
+    // 3. Validate Emergency Contact Indian phone number (10 digits starting with 6-9)
+    if (!/^[6-9]\d{9}$/.test(formData.emergencyContactPhone)) {
+      setError(
+        tr('register.emergencyContactPhoneInvalid') ||
+        'Emergency contact phone must be a valid 10-digit Indian mobile number'
+      );
+      return;
+    }
+
+    // 4. Validate secure password
     if (!isPasswordSecure) {
       setError(
         tr('register.passwordInvalid') ||
@@ -134,6 +166,8 @@ function Register() {
         role: 'worker',
         occupation: formData.occupation,
         location: formData.location.trim(),
+        emergencyContactName: formData.emergencyContactName.trim(),
+        emergencyContactPhone: formData.emergencyContactPhone.trim(),
         language: formData.language
       });
       setSuccess(tr('register.registerSuccess'));
@@ -144,6 +178,14 @@ function Register() {
       setLoading(false);
     }
   };
+
+  const isFormValid =
+    formData.name.trim().length > 0 &&
+    phoneComplete &&
+    isPasswordSecure &&
+    formData.location.trim().length > 0 &&
+    formData.emergencyContactName.trim().length > 0 &&
+    emPhoneComplete;
 
   return (
     <div className="min-h-screen flex">
@@ -396,6 +438,90 @@ function Register() {
               </datalist>
             </div>
 
+            {/* Section: Emergency Contact */}
+            <div className="rounded-2xl p-4 space-y-3.5" style={{ background: '#fff7ed', border: '1.5px solid #fdba74' }}>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-orange-950 flex items-center gap-1.5">
+                  <span>🆘</span>
+                  <span>{tr('register.emergencyContactSectionTitle') || 'Emergency Contact'}</span>
+                </h3>
+                <p className="text-[11px] text-orange-700 mt-0.5">
+                  {tr('register.emergencyContactSubtitle') || 'Required family or emergency contact for SOS assistance'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Emergency Contact Name */}
+                <div>
+                  <label htmlFor="emergencyContactName" className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                    {tr('register.emergencyContactName') || 'Emergency Contact Name'} <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <input
+                    id="emergencyContactName"
+                    name="emergencyContactName"
+                    type="text"
+                    value={formData.emergencyContactName}
+                    onChange={handleChange}
+                    required
+                    placeholder={tr('register.emergencyContactNamePlaceholder') || 'Mother / Father / Family Member'}
+                    className="chhaya-input bg-white"
+                  />
+                  {error && !formData.emergencyContactName.trim() && (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{tr('register.emergencyContactNameRequired') || 'Emergency Contact Name is required'}</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Emergency Contact Phone */}
+                <div>
+                  <label htmlFor="emergencyContactPhone" className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                    {tr('register.emergencyContactPhone') || 'Emergency Contact Phone'} <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="emergencyContactPhone"
+                      name="emergencyContactPhone"
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
+                      value={formData.emergencyContactPhone}
+                      onChange={handleEmergencyPhoneChange}
+                      required
+                      placeholder={tr('register.emergencyContactPhonePlaceholder') || '10-digit mobile number'}
+                      className={`chhaya-input bg-white pr-14 ${
+                        emPhoneInvalidStart
+                          ? 'border-red-400 bg-red-50/60'
+                          : emPhoneComplete
+                          ? 'border-emerald-400'
+                          : ''
+                      }`}
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-semibold text-gray-400 select-none">
+                      {formData.emergencyContactPhone.length}/10
+                    </span>
+                  </div>
+                  {/* Real-time hint / validation message */}
+                  {emPhoneInvalidStart ? (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{tr('register.emergencyContactPhoneInvalid') || 'Emergency contact phone must be a valid 10-digit Indian mobile number'}</span>
+                    </p>
+                  ) : emPhoneStarted && formData.emergencyContactPhone.length < 10 ? (
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      {tr('register.phoneStartHint') || 'Must be 10 digits starting with 6, 7, 8, or 9'}
+                    </p>
+                  ) : error && !formData.emergencyContactPhone.trim() ? (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1 flex items-center gap-1">
+                      <span>⚠️</span>
+                      <span>{tr('register.emergencyContactPhoneRequired') || 'Emergency Contact Phone is required'}</span>
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
             {/* Section: Preferred Language */}
             <div>
               <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
@@ -408,7 +534,13 @@ function Register() {
               </select>
             </div>
 
-            <button type="submit" disabled={loading} className="chhaya-btn-primary w-full py-3.5 mt-2">
+            <button
+              type="submit"
+              disabled={loading || !isFormValid}
+              className={`chhaya-btn-primary w-full py-3.5 mt-2 ${
+                !isFormValid && !loading ? 'opacity-60 cursor-not-allowed' : ''
+              }`}
+            >
               {loading ? <><Spinner /> {tr('register.creatingAccount')}</> : tr('register.createAccount')}
             </button>
           </form>
