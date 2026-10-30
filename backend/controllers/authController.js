@@ -102,18 +102,26 @@ const register = async (req, res) => {
       language: sanitizedLanguage
     });
 
+    // Create token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     res.status(201).json({
       message: 'User registered successfully',
+      token,
       user: {
         id: user._id,
         name: user.name,
         phone: user.phone,
         role: user.role,
-        occupation: user.occupation,
+        occupation: user.occupation || 'other',
         location: user.location,
-        emergencyContactName: user.emergencyContactName,
-        emergencyContactPhone: user.emergencyContactPhone,
-        language: user.language
+        emergencyContactName: user.emergencyContactName || '',
+        emergencyContactPhone: user.emergencyContactPhone || '',
+        language: user.language || 'en'
       }
     });
   } catch (error) {

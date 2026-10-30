@@ -4,6 +4,7 @@ import API from '../services/api';
 import SunPanel from '../components/SunPanel';
 import { LanguageSwitcher } from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 const Spinner = () => <span className="spinner" />;
 
@@ -14,6 +15,7 @@ function Login() {
   const [loading,  setLoading]  = useState(false);
   const navigate = useNavigate();
   const { tr } = useLanguage();
+  const { login: authLogin } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -27,6 +29,10 @@ function Login() {
       const res = await API.post('/auth/login', { phone, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('user', JSON.stringify(res.data.user));
+      if (authLogin) {
+        authLogin(res.data.user, res.data.token);
+      }
+      window.dispatchEvent(new Event('chhaya-user-loaded'));
       navigate(res.data.user.role === 'admin' ? '/admin' : res.data.user.role === 'manager' ? '/manager' : '/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || tr('login.loginFailed'));

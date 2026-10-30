@@ -4,6 +4,7 @@ import API from '../services/api';
 import SunPanel from '../components/SunPanel';
 import { LanguageSwitcher } from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 const Spinner = () => <span className="spinner" />;
 
@@ -20,6 +21,7 @@ const evaluatePassword = (pwd) => {
 
 function Register() {
   const { lang, setLang, tr } = useLanguage();
+  const { login: authLogin } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -159,7 +161,7 @@ function Register() {
     setLoading(true);
 
     try {
-      await API.post('/auth/register', {
+      const res = await API.post('/auth/register', {
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         password: formData.password,
@@ -170,8 +172,30 @@ function Register() {
         emergencyContactPhone: formData.emergencyContactPhone.trim(),
         language: formData.language
       });
-      setSuccess(tr('register.registerSuccess'));
-      setTimeout(() => navigate('/login'), 1500);
+
+      const { token, user } = res.data;
+
+      // Persist token and user in localStorage
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+
+      // Update AuthContext if used
+      if (authLogin) {
+        authLogin(user, token);
+      }
+
+      // Notify language system of loaded user
+      window.dispatchEvent(new Event('chhaya-user-loaded'));
+
+      // Redirect immediately by role
+      const redirectPath =
+        user?.role === 'admin'
+          ? '/admin'
+          : user?.role === 'manager'
+          ? '/manager'
+          : '/dashboard';
+
+      navigate(redirectPath);
     } catch (err) {
       setError(err.response?.data?.message || tr('register.registerFailed'));
     } finally {
