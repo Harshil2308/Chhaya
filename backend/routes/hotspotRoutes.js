@@ -7,13 +7,13 @@ const {
   updateHotspotStatus
 } = require('../controllers/hotspotController');
 
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, manager } = require('../middleware/authMiddleware');
 
-// Any logged-in user can report and view
+// Any logged-in user can report and view complaints/hotspots
 router.post('/', protect, reportHotspot);
 router.get('/', protect, getHotspots);
 
-// Only admin can update status
-router.put('/:id', protect, admin, updateHotspotStatus);
+// Managers and Admins can update status (Pending -> Verified -> Resolved)
+router.put('/:id', protect, manager, updateHotspotStatus);
 
 module.exports = router;

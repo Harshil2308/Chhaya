@@ -21,6 +21,7 @@ app.use('/api/speak', require('./routes/speakRoutes'));
 app.use('/api/assistant', require('./routes/assistantRoutes'));
 app.use('/api/teams', require('./routes/teamRoutes'));
 app.use('/api/checkins', require('./routes/checkInRoutes'));
+app.use('/api/manager', require('./routes/managerRoutes'));
 
 app.get('/', (req, res) => {
   res.send('Chhaya Backend is Running');

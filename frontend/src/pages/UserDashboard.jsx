@@ -9,6 +9,7 @@ import { calculateHaversineDistance, getCityCoordinates } from '../utils/geoDist
 import { useLanguage } from '../context/LanguageContext';
 import HeatHelper from '../components/HeatHelper';
 import ListenButton from '../components/ListenButton';
+import { GUJARAT_CITIES, getAreasForCity } from '../utils/gujaratData';
 
 const RISK_CONFIG = {
   Low: { bg: '#f0fdf4', border: '#86efac', textColor: '#15803d', badgeBg: '#dcfce7', badgeText: '#166534', dot: '#16a34a', barColor: '#22c55e' },
@@ -452,9 +453,11 @@ function UserDashboard() {
   const [heatData, setHeatData] = useState(null);
   const [centers, setCenters] = useState([]);
   const [hotspots, setHotspots] = useState([]);
+  const [myComplaints, setMyComplaints] = useState([]);
+  const [myComplaintsLoading, setMyComplaintsLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
-  const [reportData, setReportData] = useState({ location: '', city: '', description: '' });
+  const [reportData, setReportData] = useState({ location: '', city: '', areaName: '', description: '' });
   const [reportMessage, setReportMessage] = useState('');
 
   // Phase 1: Personalized risk widget state
@@ -497,12 +500,18 @@ function UserDashboard() {
         console.warn('Profile sync on dashboard mount:', err?.message);
       });
 
-    const city = parsedUser.location || 'Ahmedabad';
+    const city = parsedUser.city || parsedUser.location || 'Ahmedabad';
+    const area = parsedUser.areaName || '';
     const job = parsedUser.occupation || 'other';
-    setReportData(prev => ({ ...prev, city }));
+    setReportData(prev => ({
+      ...prev,
+      city,
+      areaName: area
+    }));
     fetchHeatData(city, job);
     fetchCoolingCenters(city);
     fetchHotspots(city);
+    fetchMyComplaints();
 
     // Browser geolocation with automatic fallback
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
@@ -549,6 +558,18 @@ function UserDashboard() {
     } catch { setHotspots([]); }
   };
 
+  const fetchMyComplaints = async () => {
+    setMyComplaintsLoading(true);
+    try {
+      const r = await API.get('/hotspots?myComplaints=true');
+      setMyComplaints(Array.isArray(r.data) ? r.data : []);
+    } catch {
+      setMyComplaints([]);
+    } finally {
+      setMyComplaintsLoading(false);
+    }
+  };
+
   const sortedCenters = useMemo(() => {
     if (!centers || centers.length === 0) return [];
     if (!userCoords) return centers.map(c => ({ ...c, distanceKm: null }));
@@ -569,14 +590,27 @@ function UserDashboard() {
 
   const handleReportChange = e => setReportData({ ...reportData, [e.target.name]: e.target.value });
   const handleReportSubmit = async (e) => {
-    e.preventDefault(); setReportMessage('');
+    e.preventDefault();
+    setReportMessage('');
+    if (!reportData.city || !reportData.areaName || !reportData.location) {
+      setReportMessage('Please select a City, select an Area, and enter a Landmark / Location');
+      return;
+    }
     try {
       await API.post('/hotspots', reportData);
       setReportMessage('success');
-      setReportData({ location: '', city: user?.location || 'Ahmedabad', description: '' });
-      setShowReportForm(false);
-      fetchHotspots(user?.location || 'Ahmedabad');
-    } catch (err) { setReportMessage(err.response?.data?.message || 'Failed to report hotspot'); }
+      const defaultCity = user?.city || user?.location || 'Ahmedabad';
+      const defaultArea = user?.areaName || '';
+      setReportData({ location: '', city: defaultCity, areaName: defaultArea, description: '' });
+      fetchMyComplaints();
+      fetchHotspots(reportData.city || defaultCity);
+      setTimeout(() => {
+        setShowReportForm(false);
+        setReportMessage('');
+      }, 2500);
+    } catch (err) {
+      setReportMessage(err.response?.data?.message || 'Failed to report hotspot');
+    }
   };
 
   if (!user) return (
@@ -888,57 +922,306 @@ function UserDashboard() {
         </div>
 
         {/* ══ ROW 6: Hotspot Report Button & Form ══ */}
-        <div className="flex justify-between items-center mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-gray-500">
               {tr('dashboard.hotspotNearby')} <strong className="text-red-500">{hotspots.length}</strong>
+            </span>
+            <span className="text-xs text-gray-300">•</span>
+            <span className="text-xs font-semibold text-gray-500">
+              My Complaints: <strong className="text-orange-600">{myComplaints.length}</strong>
             </span>
           </div>
           <button
             id="report-hotspot-btn"
             onClick={() => setShowReportForm(v => !v)}
-            className="text-xs font-semibold px-4 py-2 rounded-xl transition-all duration-200 border cursor-pointer"
+            className="text-xs font-bold px-4 py-2.5 rounded-xl transition-all duration-200 border cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
             style={!showReportForm
               ? { background: 'linear-gradient(135deg,#e06010,#c97d08)', color: '#fff', borderColor: 'transparent' }
               : { background: '#f9fafb', color: '#4b5563', borderColor: '#e5e7eb' }}
           >
-            {showReportForm ? tr('dashboard.cancelReport') : tr('dashboard.reportHotspot')}
+            <span>{showReportForm ? '✕' : '+'}</span>
+            <span>{showReportForm ? tr('dashboard.cancelReport') : 'Report Complaint / Hotspot'}</span>
           </button>
         </div>
 
         {showReportForm && (
           <div className="chhaya-card p-6 sm:p-7 mb-5 dash-fade-up border-l-4" style={{ borderLeftColor: '#e06010' }}>
-            <h3 className="text-base font-bold text-gray-900 mb-4">{tr('hotspot.reportTitle')}</h3>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">
+                  {tr('hotspot.reportTitle') || 'Report Extreme Heat Zone / Complaint'}
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Report extreme heat, lack of shade, or missing drinking water. Your area manager will review and take safety action.
+                </p>
+              </div>
+              <span className="text-2xl">📢</span>
+            </div>
+
             {reportMessage && (
               <div className={`alert mb-4 ${reportMessage === 'success' ? 'alert-success' : 'alert-error'}`}>
-                {reportMessage === 'success' ? tr('hotspot.successMsg') : `⚠️ ${reportMessage}`}
+                {reportMessage === 'success' ? '✓ Complaint submitted successfully! It is now pending review by your area manager.' : `⚠️ ${reportMessage}`}
               </div>
             )}
+
+            {/* Profile Auto-fill notice */}
+            {(user?.city || user?.location || user?.areaName) && (
+              <div className="mb-4 text-xs text-amber-800 bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 flex items-center gap-2">
+                <span>📍</span>
+                <span>
+                  Auto-filled from your profile:{' '}
+                  <strong>{reportData.city || user.city || user.location}</strong>
+                  {reportData.areaName ? ` • ${reportData.areaName}` : ''}. You can change this if the incident is at a different location.
+                </span>
+              </div>
+            )}
+
             <form onSubmit={handleReportSubmit} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Gujarat City Dropdown */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{tr('hotspot.areaLabel')}</label>
-                <input type="text" name="location" value={reportData.location} onChange={handleReportChange}
-                  required placeholder={tr('hotspot.areaPlaceholder')} className="chhaya-input" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
+                  Gujarat City <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="city"
+                  value={reportData.city}
+                  onChange={(e) => {
+                    const newCity = e.target.value;
+                    setReportData(prev => ({
+                      ...prev,
+                      city: newCity,
+                      areaName: '' // reset area when city changes
+                    }));
+                  }}
+                  required
+                  className="chhaya-input"
+                >
+                  <option value="">-- Select Gujarat City --</option>
+                  {GUJARAT_CITIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
+
+              {/* Dependent Area Dropdown */}
               <div>
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{tr('hotspot.cityLabel')}</label>
-                <input type="text" name="city" value={reportData.city} onChange={handleReportChange}
-                  required placeholder={tr('hotspot.cityPlaceholder')} className="chhaya-input" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
+                  Area / Ward <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="areaName"
+                  value={reportData.areaName}
+                  onChange={handleReportChange}
+                  disabled={!reportData.city}
+                  required
+                  className="chhaya-input disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {reportData.city ? `-- Select Area in ${reportData.city} --` : '-- Select City First --'}
+                  </option>
+                  {getAreasForCity(reportData.city).map((area) => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </select>
               </div>
+
+              {/* Specific Location / Landmark */}
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">{tr('hotspot.descLabel')}</label>
-                <textarea name="description" value={reportData.description} onChange={handleReportChange}
-                  rows="2" placeholder={tr('hotspot.descPlaceholder')}
-                  className="chhaya-input resize-none" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
+                  Specific Landmark / Worksite Place <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="location"
+                  value={reportData.location}
+                  onChange={handleReportChange}
+                  required
+                  placeholder="e.g. Near GIDC Gate 2, Metro Construction Pillar 45, Ring Road Underpass"
+                  className="chhaya-input"
+                />
               </div>
+
+              {/* Description */}
               <div className="sm:col-span-2">
-                <button type="submit" className="px-6 py-2.5 rounded-xl text-white font-bold text-sm bg-red-500 hover:bg-red-600 transition-colors border-0 cursor-pointer">
-                  {tr('hotspot.submitBtn')}
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">
+                  Description / Issue Details
+                </label>
+                <textarea
+                  name="description"
+                  value={reportData.description}
+                  onChange={handleReportChange}
+                  rows="2"
+                  placeholder="Describe the condition: e.g. No drinking water tanker, workers exposed to 43°C direct sun with no shade canopy"
+                  className="chhaya-input resize-none"
+                />
+              </div>
+
+              <div className="sm:col-span-2 flex items-center justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowReportForm(false)}
+                  className="px-4 py-2.5 rounded-xl text-gray-600 font-semibold text-xs border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl text-white font-bold text-sm bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 transition-all shadow-sm border-0 cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>⚠️</span>
+                  <span>{tr('hotspot.submitBtn') || 'Submit Complaint'}</span>
                 </button>
               </div>
             </form>
           </div>
         )}
+
+        {/* ══ ROW 6.5: My Reported Complaints & Hotspots ══ */}
+        <div className="chhaya-card card-lift p-6 sm:p-7 mb-5 dash-fade-up border-t-2" style={{ borderTopColor: '#e06010' }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📋</span>
+                <h3 className="font-bold text-gray-900 text-lg">My Complaints & Hotspot Reports</h3>
+                <span className="badge badge-pending">
+                  {myComplaintsLoading ? '…' : `${myComplaints.length} filed`}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Complaints you reported with your city and area. Your area manager handles verification and safety relief.
+              </p>
+            </div>
+            {!showReportForm && (
+              <button
+                onClick={() => setShowReportForm(true)}
+                className="text-xs font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 px-3.5 py-2 rounded-xl transition-all cursor-pointer self-start sm:self-auto shrink-0 flex items-center gap-1"
+              >
+                <span>+</span>
+                <span>Report Heat Issue</span>
+              </button>
+            )}
+          </div>
+
+          {myComplaintsLoading ? (
+            <div className="py-8 text-center text-gray-400 text-sm">
+              <div className="inline-block w-6 h-6 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin mb-2" />
+              <p>Loading your complaints…</p>
+            </div>
+          ) : myComplaints.length === 0 ? (
+            <div className="text-center py-8 px-4 rounded-2xl bg-orange-50/40 border border-orange-100">
+              <span className="text-4xl block mb-2">🛡️</span>
+              <p className="text-gray-800 font-semibold text-sm">No complaints filed yet</p>
+              <p className="text-gray-500 text-xs mt-1 max-w-md mx-auto">
+                Notice an extreme heat zone, missing drinking water post, or lack of shade at your worksite? Report it to alert your local area manager.
+              </p>
+              <button
+                onClick={() => setShowReportForm(true)}
+                className="mt-3 text-xs font-bold px-4 py-2 rounded-xl text-white bg-orange-500 hover:bg-orange-600 transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-sm"
+              >
+                <span>+</span>
+                <span>Report Extreme Heat / Complaint</span>
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {myComplaints.map((item) => {
+                const statusConfig = {
+                  Pending: {
+                    badgeClass: 'badge-pending',
+                    pillBg: '#fffbeb',
+                    pillText: '#92400e',
+                    pillBorder: '#fde68a',
+                    label: '⏳ Pending Review',
+                    note: 'Your local area manager has been notified.'
+                  },
+                  Verified: {
+                    badgeClass: 'badge-verified',
+                    pillBg: '#eff6ff',
+                    pillText: '#1e40af',
+                    pillBorder: '#bfdbfe',
+                    label: '✓ Verified by Manager',
+                    note: 'Safety team has verified this site.'
+                  },
+                  Resolved: {
+                    badgeClass: 'badge-resolved',
+                    pillBg: '#ecfdf5',
+                    pillText: '#065f46',
+                    pillBorder: '#a7f3d0',
+                    label: '★ Resolved',
+                    note: 'Relief measures or water/shade deployed.'
+                  }
+                }[item.status] || {
+                  badgeClass: 'badge-pending',
+                  pillBg: '#f9fafb',
+                  pillText: '#4b5563',
+                  pillBorder: '#e5e7eb',
+                  label: item.status,
+                  note: 'Status in progress'
+                };
+
+                return (
+                  <div
+                    key={item._id}
+                    className="rounded-2xl p-4 border transition-all duration-200 hover:shadow-sm flex flex-col justify-between"
+                    style={{ background: '#ffffff', borderColor: '#fed7aa' }}
+                  >
+                    <div>
+                      {/* Top row: Status pill + Date */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <span
+                          className="text-[11px] font-bold px-2.5 py-1 rounded-full border inline-flex items-center gap-1"
+                          style={{
+                            background: statusConfig.pillBg,
+                            color: statusConfig.pillText,
+                            borderColor: statusConfig.pillBorder
+                          }}
+                        >
+                          {statusConfig.label}
+                        </span>
+                        <span className="text-[11px] text-gray-400 font-medium">
+                          {new Date(item.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short'
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Area + City pill */}
+                      <div className="mb-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-orange-50 text-orange-800 border border-orange-200">
+                          📍 {item.city} • {item.areaName || 'General Area'}
+                        </span>
+                      </div>
+
+                      {/* Specific Location Landmark */}
+                      <h4 className="font-bold text-gray-900 text-sm leading-snug mb-1.5">
+                        {item.location}
+                      </h4>
+
+                      {/* Description */}
+                      {item.description && (
+                        <p className="text-xs text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100 italic leading-relaxed mb-2">
+                          "{item.description}"
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                      <span className="text-gray-400 font-mono">
+                        #{item._id ? item._id.slice(-6).toUpperCase() : 'HOT'}
+                      </span>
+                      <span className="text-gray-500 italic text-[10.5px]">
+                        {statusConfig.note}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ══ ROW 7: Hotspots + Practical Safety Tips ══ */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
@@ -961,7 +1244,9 @@ function UserDashboard() {
                     style={{ background: '#fff5f5', borderColor: '#fecaca' }}>
                     <div>
                       <p className="font-semibold text-gray-800 text-sm">📍 {spot.location}</p>
-                      <p className="text-xs text-gray-400">{spot.city}</p>
+                      <p className="text-xs text-gray-400">
+                        {spot.areaName ? `${spot.areaName}, ` : ''}{spot.city}
+                      </p>
                     </div>
                     <span className={`badge ${spot.status === 'Pending' ? 'badge-pending' : spot.status === 'Verified' ? 'badge-verified' : 'badge-resolved'}`}>
                       {tr('hotspot.status.' + spot.status) || spot.status}

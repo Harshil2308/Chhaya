@@ -9,6 +9,12 @@ const hotspotSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  // Area within the city (for manager filtering)
+  areaName: {
+    type: String,
+    default: '',
+    trim: true
+  },
   description: {
     type: String,
     default: ''

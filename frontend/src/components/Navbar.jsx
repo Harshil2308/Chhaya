@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 
 const SunIcon = ({ size = 20 }) => (
@@ -10,6 +10,13 @@ const SunIcon = ({ size = 20 }) => (
         stroke="white" strokeWidth="2" strokeLinecap="round"
         transform={`rotate(${deg} 12 12)`} />
     ))}
+  </svg>
+);
+
+const SettingsIcon = ({ size = 15 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
   </svg>
 );
 
@@ -39,6 +46,29 @@ export function LanguageSwitcher({ className = '' }) {
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+// Avatar component — shows profile photo or initial letter
+function Avatar({ user, size = 8 }) {
+  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
+  const sizeClass = `w-${size} h-${size}`;
+
+  if (user?.profilePhoto) {
+    return (
+      <div className={`${sizeClass} rounded-full overflow-hidden border-2 border-orange-200 shadow-sm`}>
+        <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${sizeClass} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm`}
+      style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
+    >
+      {initials}
     </div>
   );
 }
@@ -77,18 +107,31 @@ function Navbar({ user }) {
 
             {user && (
               <>
-                <div className="flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm"
-                    style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
-                    {user.name?.charAt(0)?.toUpperCase() || 'U'}
-                  </div>
+                {/* Settings link */}
+                <Link
+                  to="/settings"
+                  id="nav-settings-link"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-all text-xs font-semibold"
+                >
+                  <SettingsIcon size={14} />
+                  <span>Settings</span>
+                </Link>
+
+                {/* Clickable avatar/name → /settings */}
+                <Link
+                  to="/settings"
+                  id="nav-avatar-link"
+                  className="flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2 hover:bg-orange-100 transition-colors"
+                >
+                  <Avatar user={user} size={8} />
                   <div className="leading-tight">
                     <p className="text-sm font-semibold text-gray-800">{user.name}</p>
                     <p className="text-xs text-orange-500 capitalize font-medium">
-                      {user.role === 'admin' ? 'Admin' : tr('register.roleWorker')}
+                      {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : tr('register.roleWorker')}
                     </p>
                   </div>
-                </div>
+                </Link>
+
                 <button onClick={handleLogout}
                   className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50
                              hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
@@ -115,18 +158,34 @@ function Navbar({ user }) {
               <LanguageSwitcher />
             </div>
 
-            <div className="flex items-center gap-3 p-3 bg-orange-50 rounded-2xl">
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
-                {user.name?.charAt(0)?.toUpperCase() || 'U'}
-              </div>
+            {/* Clickable profile area → /settings */}
+            <Link
+              to="/settings"
+              id="nav-mobile-avatar-link"
+              onClick={() => setMenuOpen(false)}
+              className="flex items-center gap-3 p-3 bg-orange-50 rounded-2xl hover:bg-orange-100 transition-colors"
+            >
+              <Avatar user={user} size={9} />
               <div>
                 <p className="text-sm font-semibold text-gray-800">{user.name}</p>
                 <p className="text-xs text-orange-500 capitalize">
-                  {user.role === 'admin' ? 'Admin' : tr('register.roleWorker')}
+                  {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : tr('register.roleWorker')} · Tap to edit profile
                 </p>
               </div>
-            </div>
+            </Link>
+
+            {/* Settings link mobile */}
+            <Link
+              to="/settings"
+              id="nav-mobile-settings-link"
+              onClick={() => setMenuOpen(false)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold
+                         bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-all"
+            >
+              <SettingsIcon size={15} />
+              <span>Settings & Profile</span>
+            </Link>
+
             <button onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold
                          bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white transition-all duration-200">
@@ -140,4 +199,3 @@ function Navbar({ user }) {
 }
 
 export default Navbar;
-

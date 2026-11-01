@@ -1,20 +1,17 @@
 /**
  * backend/scripts/seedManager.js
  *
- * Seed script to create or update the official fixed Manager account for Chhaya.
+ * Seed script to create or update all official Gujarat Area Manager accounts for Chhaya.
  *
- * Credentials:
- * - Phone: 9876501234
- * - Password: Manager@123
- * - Role: manager
- * - Name: Chhaya Manager
- * - Occupation: other
- * - Location: Ahmedabad
- * - Language: en
+ * Accounts:
+ * 1) Vadodara - Makarpura   | Phone: 9876501234 | Password: Manager@123
+ * 2) Ahmedabad - Naroda     | Phone: 9876501235 | Password: Manager@123
+ * 3) Surat - Varachha       | Phone: 9876501236 | Password: Manager@123
+ * 4) Kutch - Bhuj           | Phone: 9876501237 | Password: Manager@123
  *
  * Usage:
  *   From backend folder: node scripts/seedManager.js
- *   From project root:   npm run seed:manager
+ *   From project root:   npm run seed:manager  (in backend package.json)
  */
 
 const path = require('path');
@@ -35,20 +32,127 @@ try {
 
 const User = require('../models/User');
 
-const MANAGER_CONFIG = {
-  name: 'Chhaya Manager',
-  phone: '9876501234',
-  password: 'Manager@123',
-  role: 'manager',
-  occupation: 'other',
-  location: 'Ahmedabad',
-  language: 'en'
+const MANAGERS = [
+  {
+    name: 'Vadodara Makarpura Manager',
+    phone: '9876501234',
+    password: 'Manager@123',
+    role: 'manager',
+    occupation: 'other',
+    location: 'Vadodara',
+    city: 'Vadodara',
+    areaName: 'Makarpura',
+    managedCity: 'Vadodara',
+    managedArea: 'Makarpura',
+    language: 'en',
+    emergencyContactName: 'Chhaya Admin',
+    emergencyContactPhone: '9000000001'
+  },
+  {
+    name: 'Ahmedabad Naroda Manager',
+    phone: '9876501235',
+    password: 'Manager@123',
+    role: 'manager',
+    occupation: 'other',
+    location: 'Ahmedabad',
+    city: 'Ahmedabad',
+    areaName: 'Naroda',
+    managedCity: 'Ahmedabad',
+    managedArea: 'Naroda',
+    language: 'en',
+    emergencyContactName: 'Chhaya Admin',
+    emergencyContactPhone: '9000000001'
+  },
+  {
+    name: 'Surat Varachha Manager',
+    phone: '9876501236',
+    password: 'Manager@123',
+    role: 'manager',
+    occupation: 'other',
+    location: 'Surat',
+    city: 'Surat',
+    areaName: 'Varachha',
+    managedCity: 'Surat',
+    managedArea: 'Varachha',
+    language: 'en',
+    emergencyContactName: 'Chhaya Admin',
+    emergencyContactPhone: '9000000001'
+  },
+  {
+    name: 'Kutch Bhuj Manager',
+    phone: '9876501237',
+    password: 'Manager@123',
+    role: 'manager',
+    occupation: 'other',
+    location: 'Kutch',
+    city: 'Kutch',
+    areaName: 'Bhuj',
+    managedCity: 'Kutch',
+    managedArea: 'Bhuj',
+    language: 'en',
+    emergencyContactName: 'Chhaya Admin',
+    emergencyContactPhone: '9000000001'
+  }
+];
+
+const upsertManager = async (config) => {
+  const existingUser = await User.findOne({ phone: config.phone });
+
+  if (existingUser) {
+    console.log(`ℹ️  Found existing user with phone ${config.phone}.`);
+    let needsSave = false;
+
+    const fields = ['role', 'name', 'occupation', 'location', 'city', 'areaName', 'managedCity', 'managedArea', 'language', 'emergencyContactName', 'emergencyContactPhone'];
+    for (const field of fields) {
+      if (existingUser[field] !== config[field]) {
+        console.log(`   Updating ${field}: "${existingUser[field]}" -> "${config[field]}"`);
+        existingUser[field] = config[field];
+        needsSave = true;
+      }
+    }
+
+    // Ensure password matches Manager@123
+    const isPasswordMatch = await bcrypt.compare(config.password, existingUser.password);
+    if (!isPasswordMatch) {
+      console.log(`   Updating password...`);
+      existingUser.password = await bcrypt.hash(config.password, 10);
+      needsSave = true;
+    }
+
+    if (needsSave) {
+      await existingUser.save();
+      console.log(`✅ Updated: ${config.name} (${config.managedCity} - ${config.managedArea})`);
+    } else {
+      console.log(`✅ Already up-to-date: ${config.name}`);
+    }
+  } else {
+    console.log(`   Creating: ${config.name} (Phone: ${config.phone})...`);
+    const hashedPassword = await bcrypt.hash(config.password, 10);
+
+    await User.create({
+      name: config.name,
+      phone: config.phone,
+      password: hashedPassword,
+      role: config.role,
+      occupation: config.occupation,
+      location: config.location,
+      city: config.city,
+      areaName: config.areaName,
+      managedCity: config.managedCity,
+      managedArea: config.managedArea,
+      language: config.language,
+      emergencyContactName: config.emergencyContactName,
+      emergencyContactPhone: config.emergencyContactPhone
+    });
+
+    console.log(`✅ Created: ${config.name} (${config.managedCity} - ${config.managedArea})`);
+  }
 };
 
-const seedManager = async () => {
-  console.log('\n=============================================');
-  console.log('   Chhaya — Official Manager Account Seeder');
-  console.log('=============================================\n');
+const seedManagers = async () => {
+  console.log('\n================================================');
+  console.log('   Chhaya — Gujarat Area Manager Account Seeder');
+  console.log('================================================\n');
 
   const mongoUri = process.env.MONGO_URI;
   if (!mongoUri) {
@@ -59,82 +163,28 @@ const seedManager = async () => {
   try {
     console.log('Connecting to MongoDB...');
     await mongoose.connect(mongoUri);
-    console.log(`✅ MongoDB Connected Successfully: ${mongoose.connection.host}\n`);
+    console.log(`✅ MongoDB Connected: ${mongoose.connection.host}\n`);
 
-    const existingUser = await User.findOne({ phone: MANAGER_CONFIG.phone });
-
-    if (existingUser) {
-      console.log(`ℹ️  User with phone ${MANAGER_CONFIG.phone} already exists.`);
-
-      let needsSave = false;
-
-      if (existingUser.role !== MANAGER_CONFIG.role) {
-        console.log(`   Updating role: "${existingUser.role}" -> "${MANAGER_CONFIG.role}"`);
-        existingUser.role = MANAGER_CONFIG.role;
-        needsSave = true;
-      }
-
-      // Ensure password matches Manager@123
-      const isPasswordMatch = await bcrypt.compare(MANAGER_CONFIG.password, existingUser.password);
-      if (!isPasswordMatch) {
-        console.log('   Updating password to hash of "Manager@123"...');
-        existingUser.password = await bcrypt.hash(MANAGER_CONFIG.password, 10);
-        needsSave = true;
-      }
-
-      if (existingUser.name !== MANAGER_CONFIG.name) {
-        existingUser.name = MANAGER_CONFIG.name;
-        needsSave = true;
-      }
-      if (existingUser.occupation !== MANAGER_CONFIG.occupation) {
-        existingUser.occupation = MANAGER_CONFIG.occupation;
-        needsSave = true;
-      }
-      if (existingUser.location !== MANAGER_CONFIG.location) {
-        existingUser.location = MANAGER_CONFIG.location;
-        needsSave = true;
-      }
-      if (existingUser.language !== MANAGER_CONFIG.language) {
-        existingUser.language = MANAGER_CONFIG.language;
-        needsSave = true;
-      }
-
-      if (needsSave) {
-        await existingUser.save();
-        console.log('✅ Existing user successfully updated to official manager specs.');
-      } else {
-        console.log('✅ Existing user already matches official manager specs.');
-      }
-
-      console.log(`\n🎉 Manager Account Ready: Phone: ${existingUser.phone} | Role: ${existingUser.role}\n`);
-    } else {
-      console.log(`Creating new manager account with phone ${MANAGER_CONFIG.phone}...`);
-      const hashedPassword = await bcrypt.hash(MANAGER_CONFIG.password, 10);
-
-      const newManager = await User.create({
-        name: MANAGER_CONFIG.name,
-        phone: MANAGER_CONFIG.phone,
-        password: hashedPassword,
-        role: MANAGER_CONFIG.role,
-        occupation: MANAGER_CONFIG.occupation,
-        location: MANAGER_CONFIG.location,
-        language: MANAGER_CONFIG.language
-      });
-
-      console.log('✅ New manager account successfully created.');
-      console.log(`\n🎉 Manager Account Ready: Phone: ${newManager.phone} | Role: ${newManager.role}\n`);
+    for (const config of MANAGERS) {
+      await upsertManager(config);
     }
+
+    console.log('\n🎉 All manager accounts seeded successfully!\n');
+    console.log('── Manager Credentials ──────────────────────────────');
+    MANAGERS.forEach((m) => {
+      console.log(`  ${m.managedCity} - ${m.managedArea}`);
+      console.log(`    Phone: ${m.phone} | Password: ${m.password}`);
+    });
+    console.log('─────────────────────────────────────────────────────\n');
 
     await mongoose.connection.close();
     console.log('Database connection closed cleanly.');
     process.exit(0);
   } catch (error) {
-    console.error('❌ Error seeding manager account:', error.message);
-    try {
-      await mongoose.connection.close();
-    } catch (_) {}
+    console.error('❌ Error seeding manager accounts:', error.message);
+    try { await mongoose.connection.close(); } catch (_) {}
     process.exit(1);
   }
 };
 
-seedManager();
+seedManagers();

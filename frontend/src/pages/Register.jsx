@@ -5,6 +5,7 @@ import SunPanel from '../components/SunPanel';
 import { LanguageSwitcher } from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { GUJARAT_CITIES, getAreasForCity } from '../utils/gujaratData';
 
 const Spinner = () => <span className="spinner" />;
 
@@ -28,7 +29,9 @@ function Register() {
     password: '',
     role: 'worker',
     occupation: 'other',
-    location: '',
+    location: '',   // kept for backward compat — mirrors city
+    city: '',
+    areaName: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
     language: lang || 'en'
@@ -38,6 +41,9 @@ function Register() {
   const [success,      setSuccess]      = useState('');
   const [loading,      setLoading]      = useState(false);
   const navigate = useNavigate();
+
+  // Derived area list based on selected city
+  const availableAreas = useMemo(() => getAreasForCity(formData.city), [formData.city]);
 
   // Evaluate password live
   const criteria = useMemo(() => evaluatePassword(formData.password), [formData.password]);
@@ -87,7 +93,12 @@ function Register() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'city') {
+      // Reset area when city changes
+      setFormData(prev => ({ ...prev, city: value, areaName: '', location: value }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
     if (name === 'language') {
       setLang(value);
     }
@@ -113,13 +124,20 @@ function Register() {
       !formData.name.trim() ||
       !formData.phone.trim() ||
       !formData.password ||
-      !formData.role ||
-      !formData.occupation ||
-      !formData.location.trim() ||
+      !formData.city ||
+      !formData.areaName ||
       !formData.emergencyContactName.trim() ||
       !formData.emergencyContactPhone.trim() ||
       !formData.language
     ) {
+      if (!formData.city) {
+        setError('Please select a city');
+        return;
+      }
+      if (!formData.areaName) {
+        setError('Please select an area');
+        return;
+      }
       if (!formData.emergencyContactName.trim()) {
         setError(tr('register.emergencyContactNameRequired') || 'Emergency Contact Name is required');
         return;
@@ -167,7 +185,9 @@ function Register() {
         password: formData.password,
         role: 'worker',
         occupation: formData.occupation,
-        location: formData.location.trim(),
+        location: formData.city.trim(),
+        city: formData.city.trim(),
+        areaName: formData.areaName.trim(),
         emergencyContactName: formData.emergencyContactName.trim(),
         emergencyContactPhone: formData.emergencyContactPhone.trim(),
         language: formData.language
@@ -207,7 +227,8 @@ function Register() {
     formData.name.trim().length > 0 &&
     phoneComplete &&
     isPasswordSecure &&
-    formData.location.trim().length > 0 &&
+    formData.city.length > 0 &&
+    formData.areaName.length > 0 &&
     formData.emergencyContactName.trim().length > 0 &&
     emPhoneComplete;
 
@@ -425,41 +446,85 @@ function Register() {
               </div>
             </div>
 
-            {/* Section: Location / City */}
-            <div>
-              <label className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
-                {tr('register.location')} <span className="text-red-500 font-bold">*</span>
-              </label>
-              <input
-                name="location"
-                type="text"
-                list="city-options"
-                value={formData.location}
-                onChange={handleChange}
-                required
-                placeholder={tr('register.locationPlaceholder')}
-                className="chhaya-input"
-              />
-              <datalist id="city-options">
-                <option value="Ahmedabad" />
-                <option value="Surat" />
-                <option value="Vadodara" />
-                <option value="Rajkot" />
-                <option value="Bhavnagar" />
-                <option value="Jamnagar" />
-                <option value="Gandhinagar" />
-                <option value="Junagadh" />
-                <option value="Anand" />
-                <option value="Navsari" />
-                <option value="Morbi" />
-                <option value="Bharuch" />
-                <option value="Mehsana" />
-                <option value="Bhuj" />
-                <option value="Porbandar" />
-                <option value="Vapi" />
-                <option value="Mumbai" />
-                <option value="Delhi" />
-              </datalist>
+            {/* ── Section: Gujarat City + Area ── */}
+            <div className="rounded-2xl p-4 space-y-3.5" style={{ background: '#fff7ed', border: '1.5px solid #fdba74' }}>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-orange-950 flex items-center gap-1.5">
+                  <span>📍</span>
+                  <span>Your Location in Gujarat</span>
+                </h3>
+                <p className="text-[11px] text-orange-700 mt-0.5">
+                  Select your city and work area — used for heat alerts and your manager's team view
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* City Dropdown */}
+                <div>
+                  <label htmlFor="city" className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                    City <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <select
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    required
+                    className={`chhaya-input bg-white ${formData.city ? 'border-orange-400' : ''}`}
+                  >
+                    <option value="">— Select City —</option>
+                    {GUJARAT_CITIES.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  {!formData.city && error && (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1">⚠️ City is required</p>
+                  )}
+                </div>
+
+                {/* Area Dropdown — disabled until city selected */}
+                <div>
+                  <label htmlFor="areaName" className="block text-sm font-semibold mb-1.5" style={{ color: '#5c2a0a' }}>
+                    Area <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <select
+                    id="areaName"
+                    name="areaName"
+                    value={formData.areaName}
+                    onChange={handleChange}
+                    required
+                    disabled={!formData.city}
+                    className={`chhaya-input bg-white ${
+                      !formData.city ? 'opacity-50 cursor-not-allowed' : ''
+                    } ${formData.areaName ? 'border-orange-400' : ''}`}
+                  >
+                    <option value="">
+                      {formData.city ? '— Select Area —' : '— Select city first —'}
+                    </option>
+                    {availableAreas.map((a) => (
+                      <option key={a} value={a}>{a}</option>
+                    ))}
+                  </select>
+                  {formData.city && !formData.areaName && error && (
+                    <p className="text-[11px] font-semibold text-red-600 mt-1">⚠️ Area is required</p>
+                  )}
+                  {!formData.city && (
+                    <p className="text-[11px] text-orange-500 mt-1">Select a city to enable area</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Selected location summary pill */}
+              {formData.city && formData.areaName && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+                    style={{ background: '#fff0dc', color: '#9a4c00', border: '1px solid #fdba74' }}>
+                    <span>📍</span>
+                    {formData.areaName}, {formData.city}
+                    <span className="text-green-600 ml-1">✓</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Section: Emergency Contact */}

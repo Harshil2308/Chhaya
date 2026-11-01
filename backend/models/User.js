@@ -32,6 +32,30 @@ const userSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  // ── Gujarat city + area fields ─────────────────────────────────────────────
+  // Workers: their assigned city + area
+  city: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  areaName: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  // Managers: the city + area they are responsible for
+  managedCity: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  managedArea: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  // ──────────────────────────────────────────────────────────────────────────
   emergencyContactName: {
     type: String,
     default: '',
@@ -46,6 +70,18 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['en', 'hi', 'gu'],
     default: 'en'
+  },
+  // ── Profile extras ────────────────────────────────────────────────────────
+  email: {
+    type: String,
+    default: '',
+    lowercase: true,
+    trim: true,
+    sparse: true   // sparse index so empty strings don't conflict
+  },
+  profilePhoto: {
+    type: String,
+    default: ''   // base64 data URL or empty string
   }
 }, {
   timestamps: true

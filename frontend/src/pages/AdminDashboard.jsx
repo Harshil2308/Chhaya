@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import API from '../services/api';
 import { LanguageSwitcher } from '../components/Navbar';
 import { useLanguage } from '../context/LanguageContext';
@@ -314,15 +314,32 @@ function AdminDashboard() {
 
             <LanguageSwitcher />
 
-            <div className="hidden sm:flex items-center gap-2 bg-orange-50/80 border border-orange-200/60 rounded-xl px-3 py-1.5">
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black shadow-xs"
-                style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
-              >
-                {user.name?.charAt(0)?.toUpperCase() || 'A'}
-              </div>
+            <Link
+              to="/settings"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 transition-colors"
+            >
+              ⚙️ <span className="hidden sm:inline">Settings</span>
+            </Link>
+
+            <Link
+              to="/settings"
+              className="hidden sm:flex items-center gap-2 bg-orange-50/80 border border-orange-200/60 hover:bg-orange-100/80 rounded-xl px-3 py-1.5 transition-colors"
+              title="Click to view Settings"
+            >
+              {user.profilePhoto ? (
+                <div className="w-7 h-7 rounded-lg overflow-hidden border border-orange-200">
+                  <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-black shadow-xs"
+                  style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
+                >
+                  {user.name?.charAt(0)?.toUpperCase() || 'A'}
+                </div>
+              )}
               <span className="text-xs font-bold text-gray-800">{user.name}</span>
-            </div>
+            </Link>
 
             <button
               onClick={handleLogout}
