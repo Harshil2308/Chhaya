@@ -1,843 +1,1322 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
+import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { GUJARAT_CITIES, getAreasForCity } from '../utils/gujaratData';
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
-const SunIcon = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="4.5" fill="white" />
-    {[0,45,90,135,180,225,270,315].map((deg, i) => (
-      <line key={i} x1="12" y1="2.5" x2="12" y2="4.5"
-        stroke="white" strokeWidth="2" strokeLinecap="round"
-        transform={`rotate(${deg} 12 12)`} />
-    ))}
-  </svg>
-);
+const Spinner = () => <span className="spinner mr-2" />;
 
-const CameraIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-    <circle cx="12" cy="13" r="4"/>
-  </svg>
-);
-
-const GalleryIcon = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-    <circle cx="8.5" cy="8.5" r="1.5"/>
-    <polyline points="21 15 16 10 5 21"/>
-  </svg>
-);
-
-const TrashIcon = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"/>
-    <path d="M19 6l-1 14H6L5 6"/>
-    <path d="M10 11v6M14 11v6"/>
-    <path d="M9 6V4h6v2"/>
-  </svg>
-);
-
-const CheckIcon = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="20 6 9 17 4 12"/>
-  </svg>
-);
-
-const LockIcon = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-    <path d="M7 11V7a5 5 0 0110 0v4"/>
-  </svg>
-);
-
-const ChevronIcon = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6"/>
-  </svg>
-);
-
-// ── Resize image to max width ─────────────────────────────────────────────────
-function resizeImage(dataUrl, maxWidth = 400) {
-  return new Promise((resolve) => {
+// Helper to resize & center-crop image to 400x400 square JPEG (~30-50KB)
+function resizeImage(source, targetSize = 400, quality = 0.82) {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const ratio = Math.min(1, maxWidth / img.width);
-      const w = Math.round(img.width * ratio);
-      const h = Math.round(img.height * ratio);
-      const canvas = document.createElement('canvas');
-      canvas.width = w;
-      canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      try {
+        const minDim = Math.min(img.width, img.height);
+        const startX = (img.width - minDim) / 2;
+        const startY = (img.height - minDim) / 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+
+        // Draw centered square crop for perfect avatar circle
+        ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, targetSize, targetSize);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch (err) {
+        reject(err);
+      }
     };
-    img.src = dataUrl;
+    img.onerror = () => reject(new Error('Image failed to load'));
+
+    if (typeof source === 'string') {
+      img.src = source;
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.src = e.target.result;
+      };
+      reader.onerror = () => reject(new Error('File reading failed'));
+      reader.readAsDataURL(source);
+    }
   });
 }
 
-// ── Camera modal ──────────────────────────────────────────────────────────────
-function CameraModal({ onCapture, onClose }) {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const [error, setCameraError] = useState('');
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then((stream) => {
-        if (!active) { stream.getTracks().forEach(t => t.stop()); return; }
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play();
-          setReady(true);
-        }
-      })
-      .catch((err) => {
-        if (!active) return;
-        if (err.name === 'NotAllowedError') {
-          setCameraError('Camera permission denied. Please allow camera access in your browser settings and try again.');
-        } else {
-          setCameraError('Unable to open camera: ' + err.message);
-        }
-      });
-
-    return () => {
-      active = false;
-      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-    };
-  }, []);
-
-  const stopStream = () => {
-    if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
-  };
-
-  const handleClose = () => { stopStream(); onClose(); };
-
-  const handleCapture = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const raw = canvas.toDataURL('image/jpeg', 0.9);
-    const resized = await resizeImage(raw, 400);
-    stopStream();
-    onCapture(resized);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.75)' }}
-      onClick={handleClose}
-    >
-      <div
-        className="bg-white rounded-3xl overflow-hidden max-w-sm w-full shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <CameraIcon size={18} />
-            <span className="font-bold text-gray-900">Take Photo</span>
-          </div>
-          <button onClick={handleClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 font-bold cursor-pointer">✕</button>
-        </div>
-
-        {/* Video or error */}
-        <div className="relative bg-black flex items-center justify-center" style={{ minHeight: 260 }}>
-          {error ? (
-            <div className="p-6 text-center">
-              <span className="text-4xl block mb-3">📵</span>
-              <p className="text-white text-sm leading-relaxed">{error}</p>
-            </div>
-          ) : (
-            <>
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                className="w-full max-h-72 object-cover"
-                style={{ display: ready ? 'block' : 'none' }}
-              />
-              {!ready && (
-                <div className="text-white text-sm py-16 flex flex-col items-center gap-3">
-                  <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Starting camera…</span>
-                </div>
-              )}
-            </>
-          )}
-          <canvas ref={canvasRef} className="hidden" />
-        </div>
-
-        {/* Actions */}
-        <div className="px-5 py-4 flex gap-3">
-          <button
-            onClick={handleClose}
-            className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleCapture}
-            disabled={!ready || !!error}
-            className="flex-1 py-2.5 rounded-2xl text-white font-bold text-sm transition-all cursor-pointer disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
-          >
-            📸 Capture
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Toast notification ────────────────────────────────────────────────────────
-function Toast({ message, type, onDone }) {
-  useEffect(() => {
-    const timer = setTimeout(onDone, 3200);
-    return () => clearTimeout(timer);
-  }, [onDone]);
-
-  const cfg = {
-    success: { bg: '#ecfdf5', border: '#a7f3d0', text: '#065f46', icon: '✓' },
-    error:   { bg: '#fef2f2', border: '#fca5a5', text: '#991b1b', icon: '✕' },
-  }[type] || { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', icon: 'ℹ' };
-
-  return (
-    <div
-      className="fixed bottom-6 left-1/2 z-50 px-5 py-3.5 rounded-2xl shadow-lg border flex items-center gap-2.5 font-semibold text-sm"
-      style={{
-        transform: 'translateX(-50%)',
-        background: cfg.bg,
-        borderColor: cfg.border,
-        color: cfg.text,
-        minWidth: 240,
-        animation: 'fadeInUp 0.25s ease'
-      }}
-    >
-      <span className="text-base">{cfg.icon}</span>
-      <span>{message}</span>
-    </div>
-  );
-}
-
-// ── Section card ──────────────────────────────────────────────────────────────
-function Section({ title, icon, children }) {
-  return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 sm:p-7 mb-5">
-      <div className="flex items-center gap-2.5 mb-5">
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white text-sm shadow-sm"
-          style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
-          {icon}
-        </div>
-        <h2 className="text-base font-extrabold text-gray-900">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// ── Label + Input combo ───────────────────────────────────────────────────────
-function Field({ label, children, hint, required }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold text-gray-600 uppercase tracking-wide">
-        {label}{required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
-      {children}
-      {hint && <p className="text-[11px] text-gray-400">{hint}</p>}
-    </div>
-  );
-}
-
-const inputCls = "w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 font-medium focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all placeholder:text-gray-400 placeholder:font-normal bg-white";
-
-// ── Main Settings component ───────────────────────────────────────────────────
-export default function Settings() {
+function Settings() {
   const navigate = useNavigate();
-  const { lang, setLang } = useLanguage();
+  const { user, token, updateUser, login: authLogin } = useAuth();
+  const { tr, setLang } = useLanguage();
 
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState(null); // { message, type }
-  const [showCamera, setShowCamera] = useState(false);
-
-  const galleryInputRef = useRef(null);
-
-  // Form state
-  const [form, setForm] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     location: '',
-    city: '',
-    areaName: '',
-    occupation: 'other',
+    language: 'en',
     emergencyContactName: '',
     emergencyContactPhone: '',
-    language: 'en',
+    occupation: 'other',
     profilePhoto: '',
+    role: 'worker'
   });
 
-  const [errors, setErrors] = useState({});
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState(null); // { type: 'success' | 'error', text: '' }
 
-  // ── Load user on mount ────────────────────────────────────────────────────
+  // Camera modal state
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState('');
+  const [cameraStream, setCameraStream] = useState(null);
+
+  // Password change state
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordStatus, setPasswordStatus] = useState(null); // { type: 'success' | 'error', text: '' }
+
+  const evaluatePassword = (pwd) => ({
+    length: (pwd || '').length >= 8,
+    upper: /[A-Z]/.test(pwd || ''),
+    lower: /[a-z]/.test(pwd || ''),
+    number: /[0-9]/.test(pwd || ''),
+    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~]/.test(pwd || ''),
+  });
+
+  const isPasswordSecure = (pwd) => {
+    const c = evaluatePassword(pwd);
+    return c.length && c.upper && c.lower && c.number && c.special;
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordStatus(null);
+
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+
+    if (!currentPassword.trim() || !newPassword || !confirmPassword) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'All three password fields are required.'
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'New Password and Confirm New Password do not match.'
+      });
+      return;
+    }
+
+    if (!isPasswordSecure(newPassword)) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const res = await API.put('/auth/change-password', {
+        oldPassword: currentPassword,
+        newPassword: newPassword,
+      });
+
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      setPasswordStatus({
+        type: 'success',
+        text: res.data?.message || 'Password changed successfully!'
+      });
+    } catch (err) {
+      setPasswordStatus({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to change password. Please try again.'
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const videoRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // Authenticate & load current profile data once on mount
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const stored = localStorage.getItem('user');
-    if (!token || !stored) { navigate('/login'); return; }
+    const storedToken = localStorage.getItem('token');
+    const storedUserStr = localStorage.getItem('user');
 
-    const parsedUser = JSON.parse(stored);
-    setUser(parsedUser);
-    populateForm(parsedUser);
+    if (!storedToken || !storedUserStr) {
+      navigate('/login');
+      return;
+    }
 
-    // Refresh from backend
+    try {
+      const parsedUser = JSON.parse(storedUserStr);
+      setFormData((prev) => ({
+        ...prev,
+        name: parsedUser.name || '',
+        email: parsedUser.email || '',
+        phone: parsedUser.phone || '',
+        location: parsedUser.location || '',
+        language: parsedUser.language || 'en',
+        emergencyContactName: parsedUser.emergencyContactName || '',
+        emergencyContactPhone: parsedUser.emergencyContactPhone || '',
+        occupation: parsedUser.occupation || 'other',
+        profilePhoto: parsedUser.profilePhoto || '',
+        role: parsedUser.role || 'worker'
+      }));
+    } catch (e) {
+      navigate('/login');
+      return;
+    }
+
+    // Fetch fresh profile from backend once on mount
     API.get('/auth/me')
       .then((res) => {
         if (res.data) {
-          const merged = { ...parsedUser, ...res.data };
-          setUser(merged);
-          localStorage.setItem('user', JSON.stringify(merged));
-          populateForm(merged);
+          const u = res.data;
+          setFormData((prev) => ({
+            ...prev,
+            name: u.name || '',
+            email: u.email || '',
+            phone: u.phone || '',
+            location: u.location || '',
+            language: u.language || 'en',
+            emergencyContactName: u.emergencyContactName || '',
+            emergencyContactPhone: u.emergencyContactPhone || '',
+            occupation: u.occupation || 'other',
+            profilePhoto: u.profilePhoto || '',
+            role: u.role || 'worker'
+          }));
+          if (updateUser) {
+            updateUser(u);
+          } else {
+            localStorage.setItem('user', JSON.stringify(u));
+          }
         }
       })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [navigate]);
+      .catch((err) => {
+        console.warn('Could not fetch latest user data:', err.message);
+      })
+      .finally(() => {
+        setInitialLoading(false);
+      });
+  }, []); // Run ONLY once on mount to avoid infinite fetch loop
 
-  const populateForm = (u) => {
-    setForm({
-      name: u.name || '',
-      email: u.email || '',
-      phone: u.phone || '',
-      location: u.location || '',
-      city: u.city || '',
-      areaName: u.areaName || '',
-      occupation: u.occupation || 'other',
-      emergencyContactName: u.emergencyContactName || '',
-      emergencyContactPhone: u.emergencyContactPhone || '',
-      language: u.language || 'en',
-      profilePhoto: u.profilePhoto || '',
-    });
-  };
-
-  // Available areas for selected city
-  const areaOptions = useMemo(() => getAreasForCity(form.city), [form.city]);
-
-  // ── Form change handlers ──────────────────────────────────────────────────
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => ({ ...prev, [name]: '' }));
-  };
-
-  const handleCityChange = (e) => {
-    const newCity = e.target.value;
-    setForm((prev) => ({ ...prev, city: newCity, areaName: '' }));
-    setErrors((prev) => ({ ...prev, city: '' }));
-  };
-
-  // ── Photo handlers ────────────────────────────────────────────────────────
-  const handleGalleryChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (ev) => {
-      const resized = await resizeImage(ev.target.result, 400);
-      setForm((prev) => ({ ...prev, profilePhoto: resized }));
+  // Clean up camera stream when cameraActive turns false or component unmounts
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
     };
-    reader.readAsDataURL(file);
-    e.target.value = ''; // reset so same file can be picked again
-  };
+  }, [cameraStream]);
 
-  const handleCameraCapture = (dataUrl) => {
-    setShowCamera(false);
-    setForm((prev) => ({ ...prev, profilePhoto: dataUrl }));
-  };
+  // Handle live device camera start
+  const handleStartCamera = async () => {
+    setCameraError('');
+    setCameraActive(true);
 
-  const handleRemovePhoto = () => {
-    setForm((prev) => ({ ...prev, profilePhoto: '' }));
-  };
-
-  // ── Validation ────────────────────────────────────────────────────────────
-  const validate = () => {
-    const errs = {};
-    const phoneRx = /^[6-9]\d{9}$/;
-    const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!form.name.trim()) errs.name = 'Name is required';
-    if (!form.phone.trim()) {
-      errs.phone = 'Phone number is required';
-    } else if (!phoneRx.test(form.phone.trim())) {
-      errs.phone = 'Enter a valid 10-digit Indian mobile number (starting with 6–9)';
-    }
-    if (form.email.trim() && !emailRx.test(form.email.trim())) {
-      errs.email = 'Enter a valid email address';
-    }
-    if (form.emergencyContactPhone.trim() && !phoneRx.test(form.emergencyContactPhone.trim())) {
-      errs.emergencyContactPhone = 'Enter a valid 10-digit Indian mobile number';
-    }
-    if (!['en', 'hi', 'gu'].includes(form.language)) {
-      errs.language = 'Select a valid language';
-    }
-
-    setErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
-  // ── Save profile ──────────────────────────────────────────────────────────
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
-    setSaving(true);
     try {
-      const payload = {
-        name: form.name.trim(),
-        email: form.email.trim(),
-        phone: form.phone.trim(),
-        location: form.location.trim(),
-        emergencyContactName: form.emergencyContactName.trim(),
-        emergencyContactPhone: form.emergencyContactPhone.trim(),
-        language: form.language,
-        profilePhoto: form.profilePhoto,
-      };
-
-      // Only send occupation for workers
-      if (user?.role === 'worker') {
-        payload.occupation = form.occupation;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera is not supported on this device/browser');
       }
 
-      // Gujarat city + area (if changed)
-      if (form.city && form.areaName) {
-        payload.city = form.city;
-        payload.areaName = form.areaName;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'user',
+          width: { ideal: 640 },
+          height: { ideal: 640 }
+        },
+        audio: false
+      });
+
+      setCameraStream(stream);
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+    } catch (err) {
+      console.error('Camera access error:', err);
+      setCameraError(
+        tr('settings.cameraError') ||
+          'Could not access device camera. Please check camera permissions.'
+      );
+    }
+  };
+
+  // Re-attach stream if video element mounts after stream is set
+  useEffect(() => {
+    if (cameraActive && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraActive, cameraStream]);
+
+  // Stop camera tracks cleanly
+  const handleStopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setCameraActive(false);
+    setCameraError('');
+  };
+
+  // Immediately uploads profile photo to backend and keeps app state in sync
+  const uploadProfilePhoto = async (photoDataUrl) => {
+    setPhotoUploading(true);
+    setStatusMessage(null);
+
+    // Optimistically update local form state so preview updates immediately
+    setFormData((prev) => ({ ...prev, profilePhoto: photoDataUrl }));
+
+    try {
+      const res = await API.put('/auth/me', { profilePhoto: photoDataUrl });
+      const updatedUser = res.data?.user;
+
+      if (updatedUser) {
+        if (updateUser) {
+          updateUser(updatedUser);
+        } else if (authLogin) {
+          authLogin(updatedUser, localStorage.getItem('token'));
+        } else {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
       }
 
-      const res = await API.put('/auth/me', payload);
-      const updated = res.data.user;
-
-      // Update localStorage user
-      const newUser = { ...user, ...updated };
-      localStorage.setItem('user', JSON.stringify(newUser));
-      setUser(newUser);
-      populateForm(newUser);
-
-      // Sync language if changed
-      if (updated.language && updated.language !== lang) {
-        setLang(updated.language);
-      }
-
-      // Dispatch event so dashboards refresh name/avatar
       window.dispatchEvent(new Event('chhaya-user-loaded'));
 
-      setToast({ message: 'Profile saved successfully! ✓', type: 'success' });
+      if (photoDataUrl) {
+        setStatusMessage({
+          type: 'success',
+          text: tr('settings.photoUpdated') || 'Profile photo updated successfully!'
+        });
+      } else {
+        // No message printed when removing photo
+        setStatusMessage(null);
+      }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to save profile. Please try again.';
-      setToast({ message: msg, type: 'error' });
+      console.error('Failed to update profile photo:', err);
+      // Revert if error
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        try {
+          const prev = JSON.parse(stored);
+          setFormData((f) => ({ ...f, profilePhoto: prev.profilePhoto || '' }));
+        } catch (_) {}
+      }
+      setStatusMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to update profile photo. Please try again.'
+      });
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  // Capture frame from live video stream and upload immediately
+  const handleCapturePhoto = async () => {
+    if (!videoRef.current) return;
+
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      const vw = video.videoWidth || video.clientWidth || 400;
+      const vh = video.videoHeight || video.clientHeight || 400;
+      const size = Math.min(vw, vh);
+
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      const startX = (vw - size) / 2;
+      const startY = (vh - size) / 2;
+
+      // Mirror horizontally to match selfie camera preview
+      ctx.translate(400, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, startX, startY, size, size, 0, 0, 400, 400);
+
+      const photoDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      handleStopCamera();
+
+      await uploadProfilePhoto(photoDataUrl);
+    } catch (err) {
+      console.error('Camera capture error:', err);
+      handleStopCamera();
+      setStatusMessage({
+        type: 'error',
+        text: 'Failed to capture photo from camera. Please try again.'
+      });
+    }
+  };
+
+  // Choose from Gallery (file input) and upload immediately
+  const handleGallerySelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const resized = await resizeImage(file, 400, 0.82);
+      await uploadProfilePhoto(resized);
+    } catch (err) {
+      console.error('Failed to process selected image:', err);
+      setStatusMessage({
+        type: 'error',
+        text: 'Failed to process selected image. Please try another image file.'
+      });
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  // Remove photo and update immediately without printing any message
+  const handleRemovePhoto = async () => {
+    setStatusMessage(null);
+    await uploadProfilePhoto('');
+  };
+
+  // Generic form field handler
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Phone number digits-only handler (max 10)
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData((prev) => ({ ...prev, phone: digitsOnly }));
+  };
+
+  // Emergency phone digits-only handler (max 10)
+  const handleEmergencyPhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData((prev) => ({ ...prev, emergencyContactPhone: digitsOnly }));
+  };
+
+  // Form submit handler
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setStatusMessage(null);
+
+    // 1. Name validation
+    if (!formData.name.trim()) {
+      setStatusMessage({
+        type: 'error',
+        text: tr('settings.nameRequired') || 'Full Name cannot be empty'
+      });
+      return;
+    }
+
+    // 2. Phone validation
+    const phoneRegex = /^[6-9]\d{9}$/;
+    if (!phoneRegex.test(formData.phone.trim())) {
+      setStatusMessage({
+        type: 'error',
+        text:
+          tr('settings.phoneInvalid') ||
+          'Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9'
+      });
+      return;
+    }
+
+    // 3. Email validation (if provided)
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email.trim())) {
+        setStatusMessage({
+          type: 'error',
+          text: tr('settings.emailInvalid') || 'Please enter a valid email address'
+        });
+        return;
+      }
+    }
+
+    // 4. Emergency phone validation (if provided)
+    if (formData.emergencyContactPhone.trim()) {
+      if (!phoneRegex.test(formData.emergencyContactPhone.trim())) {
+        setStatusMessage({
+          type: 'error',
+          text:
+            tr('settings.emergencyPhoneInvalid') ||
+            'Emergency contact phone must be a valid 10-digit Indian mobile number'
+        });
+        return;
+      }
+    }
+
+    setSaving(true);
+
+    try {
+      const payload = {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        location: formData.location.trim(),
+        language: formData.language,
+        emergencyContactName: formData.emergencyContactName.trim(),
+        emergencyContactPhone: formData.emergencyContactPhone.trim(),
+        profilePhoto: formData.profilePhoto,
+        // Send occupation only for worker role
+        ...(formData.role === 'worker' ? { occupation: formData.occupation } : {})
+      };
+
+      const res = await API.put('/auth/me', payload);
+      const updatedUser = res.data.user;
+
+      // Update state and persistent stores
+      if (updateUser) {
+        updateUser(updatedUser);
+      } else if (authLogin) {
+        authLogin(updatedUser, token || localStorage.getItem('token'));
+      } else {
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+
+      // Sync language context
+      if (updatedUser.language) {
+        setLang(updatedUser.language);
+      }
+      window.dispatchEvent(new Event('chhaya-user-loaded'));
+
+      setStatusMessage({
+        type: 'success',
+        text: tr('settings.savedSuccess') || 'Profile updated successfully!'
+      });
+
+      // Scroll to top to ensure toast is visible
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      setStatusMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to update profile. Please try again.'
+      });
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Loading spinner ───────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50/30">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-orange-100 border-t-orange-500 rounded-full animate-spin" />
-          <p className="text-sm font-semibold text-orange-600">Loading profile…</p>
-        </div>
-      </div>
-    );
-  }
+  const phoneStarted = formData.phone.length > 0;
+  const phoneInvalidStart = phoneStarted && !/^[6-9]/.test(formData.phone);
+  const phoneComplete = formData.phone.length === 10 && /^[6-9]\d{9}$/.test(formData.phone);
 
-  const initials = form.name?.charAt(0)?.toUpperCase() || 'U';
-  const dashboardPath = user?.role === 'admin' ? '/admin' : user?.role === 'manager' ? '/manager' : '/dashboard';
+  const backDestination =
+    formData.role === 'admin'
+      ? '/admin'
+      : formData.role === 'manager'
+      ? '/manager'
+      : '/dashboard';
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(160deg,#fff7ed 0%,#fafaf9 100%)' }}>
-      {/* Camera modal */}
-      {showCamera && (
-        <CameraModal
-          onCapture={handleCameraCapture}
-          onClose={() => setShowCamera(false)}
-        />
-      )}
+    <div
+      className="min-h-screen pb-16 relative"
+      style={{
+        background: 'linear-gradient(145deg, #fdf0e0 0%, #fef6ec 45%, #fff8f2 100%)'
+      }}
+    >
+      {/* Top Navbar */}
+      <Navbar user={formData} />
 
-      {/* Toast */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onDone={() => setToast(null)}
-        />
-      )}
-
-      {/* ── Navbar ──────────────────────────────────────────────────────────── */}
-      <nav className="sticky top-0 z-40 bg-white border-b border-orange-100"
-        style={{ boxShadow: '0 1px 8px rgba(249,115,22,0.08)' }}>
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <Link to={dashboardPath} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm"
-                style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
-                <SunIcon size={18} />
-              </div>
-              <span className="text-xl font-extrabold text-gray-900 tracking-tight">Chhaya</span>
-            </Link>
-            <span className="text-gray-300 text-lg">›</span>
-            <span className="text-sm font-semibold text-orange-600">Settings</span>
-          </div>
-
-          <Link
-            to={dashboardPath}
-            className="text-xs font-bold px-3.5 py-2 rounded-xl border border-orange-200 text-orange-700 bg-orange-50 hover:bg-orange-100 transition-colors"
-          >
-            ← Dashboard
-          </Link>
-        </div>
-      </nav>
-
-      {/* ── Page content ──────────────────────────────────────────────────── */}
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-extrabold text-gray-900">Profile Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your account details, photo, and preferences.</p>
-        </div>
-
-        <form onSubmit={handleSave} noValidate>
-
-          {/* ──── A) Profile Information ──────────────────────────────────── */}
-          <Section title="Profile Photo" icon={<CameraIcon size={15} />}>
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-              {/* Avatar preview */}
-              <div className="shrink-0">
-                <div
-                  className="w-24 h-24 rounded-full border-4 border-orange-200 shadow-md overflow-hidden flex items-center justify-center bg-orange-100 text-white text-3xl font-extrabold select-none"
-                  style={form.profilePhoto ? {} : { background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
-                >
-                  {form.profilePhoto ? (
-                    <img src={form.profilePhoto} alt="Profile" className="w-full h-full object-cover" />
-                  ) : initials}
-                </div>
-              </div>
-
-              {/* Photo action buttons */}
-              <div className="flex flex-col gap-2.5 w-full sm:w-auto">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photo Options</p>
-
-                <button
-                  type="button"
-                  id="take-photo-btn"
-                  onClick={() => setShowCamera(true)}
-                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border border-orange-200 bg-orange-50 text-orange-700 font-semibold text-sm hover:bg-orange-100 transition-colors cursor-pointer"
-                >
-                  <CameraIcon size={16} />
-                  <span>Take Photo (Live Camera)</span>
-                </button>
-
-                <button
-                  type="button"
-                  id="gallery-btn"
-                  onClick={() => galleryInputRef.current?.click()}
-                  className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border border-gray-200 bg-white text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <GalleryIcon size={16} />
-                  <span>Choose from Gallery</span>
-                </button>
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleGalleryChange}
-                />
-
-                {form.profilePhoto && (
-                  <button
-                    type="button"
-                    id="remove-photo-btn"
-                    onClick={handleRemovePhoto}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-red-200 bg-red-50 text-red-600 font-semibold text-sm hover:bg-red-100 transition-colors cursor-pointer"
-                  >
-                    <TrashIcon size={14} />
-                    <span>Remove Photo</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </Section>
-
-          {/* ──── Profile fields ─────────────────────────────────────────── */}
-          <Section title="Personal Information" icon="👤">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Name */}
-              <div className="sm:col-span-2">
-                <Field label="Full Name" required>
-                  <input
-                    id="settings-name"
-                    name="name"
-                    type="text"
-                    value={form.name}
-                    onChange={handleChange}
-                    placeholder="Your full name"
-                    className={inputCls}
-                    style={errors.name ? { borderColor: '#f87171' } : {}}
-                  />
-                  {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-                </Field>
-              </div>
-
-              {/* Email */}
-              <div className="sm:col-span-2">
-                <Field label="Email Address" hint="Optional — used for account recovery.">
-                  <input
-                    id="settings-email"
-                    name="email"
-                    type="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="yourname@example.com"
-                    className={inputCls}
-                    style={errors.email ? { borderColor: '#f87171' } : {}}
-                  />
-                  {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
-                </Field>
-              </div>
-
-              {/* Phone */}
-              <Field label="Mobile Number" required hint="10-digit Indian number (starts with 6–9).">
-                <input
-                  id="settings-phone"
-                  name="phone"
-                  type="tel"
-                  value={form.phone}
-                  onChange={handleChange}
-                  placeholder="98765XXXXX"
-                  maxLength={10}
-                  className={inputCls}
-                  style={errors.phone ? { borderColor: '#f87171' } : {}}
-                />
-                {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
-              </Field>
-
-              {/* Language */}
-              <Field label="Preferred Language">
-                <select
-                  id="settings-language"
-                  name="language"
-                  value={form.language}
-                  onChange={handleChange}
-                  className={inputCls}
-                  style={errors.language ? { borderColor: '#f87171' } : {}}
-                >
-                  <option value="en">English</option>
-                  <option value="hi">हिन्दी (Hindi)</option>
-                  <option value="gu">ગુજરાતી (Gujarati)</option>
-                </select>
-                {errors.language && <p className="text-red-500 text-xs mt-1">{errors.language}</p>}
-              </Field>
-
-              {/* Occupation — workers only */}
-              {user?.role === 'worker' && (
-                <div className="sm:col-span-2">
-                  <Field label="Occupation / Work Sector">
-                    <select
-                      id="settings-occupation"
-                      name="occupation"
-                      value={form.occupation}
-                      onChange={handleChange}
-                      className={inputCls}
-                    >
-                      <option value="construction">Construction Worker</option>
-                      <option value="farmer">Farmer</option>
-                      <option value="delivery">Delivery Person</option>
-                      <option value="vendor">Street Vendor</option>
-                      <option value="other">Other Outdoor Worker</option>
-                    </select>
-                  </Field>
-                </div>
-              )}
-            </div>
-          </Section>
-
-          {/* ──── Location section ────────────────────────────────────────── */}
-          <Section title="Location" icon="📍">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Gujarat City Dropdown */}
-              <Field label="Gujarat City">
-                <select
-                  id="settings-city"
-                  name="city"
-                  value={form.city}
-                  onChange={handleCityChange}
-                  className={inputCls}
-                >
-                  <option value="">-- Select Gujarat City --</option>
-                  {GUJARAT_CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {/* Dependent Area Dropdown */}
-              <Field label="Area / Ward">
-                <select
-                  id="settings-areaName"
-                  name="areaName"
-                  value={form.areaName}
-                  onChange={handleChange}
-                  disabled={!form.city}
-                  className={`${inputCls} disabled:bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400`}
-                >
-                  <option value="">
-                    {form.city ? `-- Select Area in ${form.city} --` : '-- Select City First --'}
-                  </option>
-                  {areaOptions.map((a) => (
-                    <option key={a} value={a}>{a}</option>
-                  ))}
-                </select>
-              </Field>
-
-              {/* Legacy location text field */}
-              <div className="sm:col-span-2">
-                <Field label="City / Location (general)" hint="Free-text location used in heat alerts.">
-                  <input
-                    id="settings-location"
-                    name="location"
-                    type="text"
-                    value={form.location}
-                    onChange={handleChange}
-                    placeholder="e.g. Ahmedabad, Surat…"
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-            </div>
-          </Section>
-
-          {/* ──── Emergency contact ───────────────────────────────────────── */}
-          <Section title="Emergency Contact" icon="🆘">
-            <div className="mb-3 text-xs text-orange-800 bg-orange-50 p-3 rounded-xl border border-orange-200">
-              This person will be contacted in case of a heat emergency. Keep this info up to date.
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Contact Name">
-                <input
-                  id="settings-emergencyContactName"
-                  name="emergencyContactName"
-                  type="text"
-                  value={form.emergencyContactName}
-                  onChange={handleChange}
-                  placeholder="e.g. Ramesh Patel"
-                  className={inputCls}
-                />
-              </Field>
-
-              <Field label="Contact Phone" hint="Valid 10-digit Indian mobile number.">
-                <input
-                  id="settings-emergencyContactPhone"
-                  name="emergencyContactPhone"
-                  type="tel"
-                  value={form.emergencyContactPhone}
-                  onChange={handleChange}
-                  placeholder="98765XXXXX"
-                  maxLength={10}
-                  className={inputCls}
-                  style={errors.emergencyContactPhone ? { borderColor: '#f87171' } : {}}
-                />
-                {errors.emergencyContactPhone && (
-                  <p className="text-red-500 text-xs mt-1">{errors.emergencyContactPhone}</p>
-                )}
-              </Field>
-            </div>
-          </Section>
-
-          {/* ──── Save button ─────────────────────────────────────────────── */}
-          <div className="flex items-center justify-end gap-3 mb-5">
-            <Link
-              to={dashboardPath}
-              className="px-5 py-2.5 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              id="save-profile-btn"
-              disabled={saving}
-              className="px-7 py-2.5 rounded-2xl text-white font-bold text-sm shadow-sm transition-all cursor-pointer disabled:opacity-60 flex items-center gap-2"
-              style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
-            >
-              {saving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Saving…</span>
-                </>
-              ) : (
-                <>
-                  <CheckIcon size={15} />
-                  <span>Save Profile</span>
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* ──── B) Security section ─────────────────────────────────────── */}
-          <Section title="Security" icon={<LockIcon size={15} />}>
-            <div className="rounded-2xl border border-gray-100 bg-gray-50/60 hover:bg-gray-50 transition-colors cursor-pointer"
-              onClick={() => setToast({ message: 'Change Password coming soon — stay tuned!', type: 'info' })}
-            >
-              <div className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center text-gray-600">
-                    <LockIcon size={18} />
-                  </div>
-                  <div>
-                    <p className="font-bold text-gray-900 text-sm">Change Password</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Update your account password for security</p>
-                  </div>
-                </div>
-                <ChevronIcon size={16} />
-              </div>
-            </div>
-
-            <div className="mt-3 p-3 rounded-xl bg-blue-50 border border-blue-100">
-              <p className="text-xs text-blue-800 font-medium">
-                🔐 Your account is protected by JWT authentication. For best security, use a unique strong password and do not share it.
-              </p>
-            </div>
-          </Section>
-
-          {/* ──── Account info pill ───────────────────────────────────────── */}
-          <div className="text-center pb-8">
-            <span className="inline-flex items-center gap-2 text-[11px] text-gray-400 bg-white border border-gray-100 px-3.5 py-1.5 rounded-full shadow-sm">
-              <span>Signed in as</span>
-              <strong className="text-gray-600">{user?.phone}</strong>
-              <span className="capitalize font-semibold px-1.5 py-0.5 rounded-md text-[10px]"
-                style={{ background: '#fff7ed', color: '#c2410c' }}>
-                {user?.role}
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-6 sm:pt-8">
+        {/* Header Breadcrumb / Navigation */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <button
+                type="button"
+                onClick={() => navigate(backDestination)}
+                className="text-xs font-semibold text-orange-600 hover:text-orange-800 flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <span>←</span>
+                <span>{tr('common.back')}</span>
+              </button>
+              <span className="text-gray-300">/</span>
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {formData.role === 'admin'
+                  ? 'Admin Settings'
+                  : formData.role === 'manager'
+                  ? 'Manager Settings'
+                  : 'Worker Settings'}
               </span>
-            </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+              {tr('settings.title')}
+            </h1>
+            <p className="text-sm text-gray-500 mt-0.5">{tr('settings.subtitle')}</p>
           </div>
-        </form>
-      </div>
 
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateX(-50%) translateY(16px); }
-          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-      `}</style>
+          <span
+            className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border shadow-2xs"
+            style={{
+              background:
+                formData.role === 'admin'
+                  ? '#fee2e2'
+                  : formData.role === 'manager'
+                  ? '#fef3c7'
+                  : '#ffedd5',
+              color:
+                formData.role === 'admin'
+                  ? '#b91c1c'
+                  : formData.role === 'manager'
+                  ? '#b45309'
+                  : '#c2410c',
+              borderColor:
+                formData.role === 'admin'
+                  ? '#fca5a5'
+                  : formData.role === 'manager'
+                  ? '#fde68a'
+                  : '#fdba74'
+            }}
+          >
+            {formData.role}
+          </span>
+        </div>
+
+        {/* Status Alerts */}
+        {statusMessage && (
+          <div
+            className={`alert mb-6 shadow-sm flex items-center gap-2 ${
+              statusMessage.type === 'success' ? 'alert-success' : 'alert-error'
+            }`}
+          >
+            <span className="text-lg">{statusMessage.type === 'success' ? '✅' : '⚠️'}</span>
+            <span className="text-sm font-semibold">{statusMessage.text}</span>
+          </div>
+        )}
+
+        {initialLoading ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-orange-100 shadow-sm">
+            <span className="spinner mb-2 inline-block" />
+            <p className="text-sm text-gray-500 font-medium">{tr('common.loading')}</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* SECTION A: Profile Information                                 */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-orange-100 shadow-sm">
+              <div className="border-b border-orange-100/70 pb-4 mb-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                  <span>{tr('settings.profileInfoTitle')}</span>
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  {tr('settings.profileInfoSubtitle')}
+                </p>
+              </div>
+
+              {/* Profile Photo Avatar & Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8 p-5 rounded-2xl bg-orange-50/50 border border-orange-100/60">
+                <div className="relative group shrink-0">
+                  {formData.profilePhoto ? (
+                    <img
+                      src={formData.profilePhoto}
+                      alt={formData.name || 'User'}
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover shadow-md border-3 border-orange-300"
+                    />
+                  ) : (
+                    <div
+                      className="w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center text-white text-3xl font-black shadow-md border-3 border-orange-300 select-none"
+                      style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
+                    >
+                      {formData.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
+
+                  {/* Uploading loading overlay */}
+                  {photoUploading && (
+                    <div className="absolute inset-0 rounded-full bg-black/65 flex flex-col items-center justify-center text-white text-xs font-bold backdrop-blur-2xs shadow-inner">
+                      <span className="spinner mb-1" />
+                      <span className="text-[10px] uppercase tracking-wider text-orange-200">Updating...</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex-1 text-center sm:text-left">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                    <h3 className="text-base font-bold text-gray-900">
+                      {formData.name || 'Your Profile Picture'}
+                    </h3>
+                    {photoUploading && (
+                      <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full animate-pulse">
+                        Uploading...
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mb-3.5">
+                    Take a live camera photo or upload an image file. Updates immediately to your profile!
+                  </p>
+
+                  {/* Photo Actions */}
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                    {/* Take Photo button (Live Camera) */}
+                    <button
+                      type="button"
+                      id="settings-take-photo-btn"
+                      disabled={photoUploading}
+                      onClick={handleStartCamera}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-orange-700 border border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                        <circle cx="12" cy="13" r="3"/>
+                      </svg>
+                      <span>{tr('settings.takePhoto')}</span>
+                    </button>
+
+                    {/* Choose from Gallery button */}
+                    <button
+                      type="button"
+                      id="settings-gallery-btn"
+                      disabled={photoUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
+                    >
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                      </svg>
+                      <span>{photoUploading ? 'Uploading...' : tr('settings.chooseGallery')}</span>
+                    </button>
+
+                    {/* Hidden file input */}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={handleGallerySelect}
+                    />
+
+                    {/* Remove Photo button */}
+                    {formData.profilePhoto && (
+                      <button
+                        type="button"
+                        id="settings-remove-photo-btn"
+                        disabled={photoUploading}
+                        onClick={handleRemovePhoto}
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 bg-red-50/80 border border-red-200 hover:bg-red-100 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        <span>{tr('settings.removePhoto')}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Fields */}
+              <form onSubmit={handleSaveProfile} className="space-y-4 sm:space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Full Name */}
+                  <div>
+                    <label
+                      htmlFor="settings-name"
+                      className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5"
+                    >
+                      {tr('settings.fullName')} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="settings-name"
+                      name="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder={tr('settings.fullNamePlaceholder')}
+                      className="chhaya-input bg-white"
+                    />
+                  </div>
+
+                  {/* Email (Optional) */}
+                  <div>
+                    <label
+                      htmlFor="settings-email"
+                      className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5"
+                    >
+                      {tr('settings.email')}
+                    </label>
+                    <input
+                      id="settings-email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder={tr('settings.emailPlaceholder')}
+                      className="chhaya-input bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Phone Number (Editable with 10-digit validation) */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label
+                        htmlFor="settings-phone"
+                        className="block text-xs font-bold text-gray-700 uppercase tracking-wide"
+                      >
+                        {tr('settings.phone')} <span className="text-red-500">*</span>
+                      </label>
+                      <span className="text-[11px] font-semibold text-gray-400">
+                        {formData.phone.length}/10
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <input
+                        id="settings-phone"
+                        name="phone"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        required
+                        value={formData.phone}
+                        onChange={handlePhoneChange}
+                        placeholder={tr('settings.phonePlaceholder')}
+                        className={`chhaya-input bg-white ${
+                          phoneInvalidStart
+                            ? 'border-red-400 bg-red-50/60'
+                            : phoneComplete
+                            ? 'border-emerald-400'
+                            : ''
+                        }`}
+                      />
+                    </div>
+                    {phoneInvalidStart && (
+                      <p className="text-[11px] font-semibold text-red-600 mt-1 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>{tr('settings.phoneInvalid')}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Location / City */}
+                  <div>
+                    <label
+                      htmlFor="settings-location"
+                      className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5"
+                    >
+                      {tr('settings.location')} <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      id="settings-location"
+                      name="location"
+                      type="text"
+                      list="settings-city-options"
+                      required
+                      value={formData.location}
+                      onChange={handleChange}
+                      placeholder={tr('settings.locationPlaceholder')}
+                      className="chhaya-input bg-white"
+                    />
+                    <datalist id="settings-city-options">
+                      <option value="Ahmedabad" />
+                      <option value="Surat" />
+                      <option value="Vadodara" />
+                      <option value="Rajkot" />
+                      <option value="Bhavnagar" />
+                      <option value="Jamnagar" />
+                      <option value="Gandhinagar" />
+                      <option value="Junagadh" />
+                      <option value="Anand" />
+                      <option value="Navsari" />
+                      <option value="Morbi" />
+                      <option value="Bharuch" />
+                      <option value="Mehsana" />
+                      <option value="Bhuj" />
+                      <option value="Porbandar" />
+                      <option value="Vapi" />
+                      <option value="Mumbai" />
+                      <option value="Delhi" />
+                    </datalist>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Preferred Language */}
+                  <div>
+                    <label
+                      htmlFor="settings-language"
+                      className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5"
+                    >
+                      {tr('settings.language')} <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="settings-language"
+                      name="language"
+                      value={formData.language}
+                      onChange={handleChange}
+                      className="chhaya-input bg-white cursor-pointer"
+                    >
+                      <option value="en">English (EN)</option>
+                      <option value="hi">हिन्दी (Hindi)</option>
+                      <option value="gu">ગુજરાતી (Gujarati)</option>
+                    </select>
+                  </div>
+
+                  {/* Occupation / Work Sector: VISIBLE ONLY FOR WORKER ROLE */}
+                  {formData.role === 'worker' ? (
+                    <div>
+                      <label
+                        htmlFor="settings-occupation"
+                        className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5"
+                      >
+                        {tr('settings.occupation')} <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        id="settings-occupation"
+                        name="occupation"
+                        value={formData.occupation}
+                        onChange={handleChange}
+                        className="chhaya-input bg-white cursor-pointer"
+                      >
+                        <option value="construction">
+                          {tr('register.occupations.construction') || 'Construction Worker'}
+                        </option>
+                        <option value="farmer">
+                          {tr('register.occupations.farmer') || 'Farmer'}
+                        </option>
+                        <option value="delivery">
+                          {tr('register.occupations.delivery') || 'Delivery Person'}
+                        </option>
+                        <option value="vendor">
+                          {tr('register.occupations.vendor') || 'Street Vendor'}
+                        </option>
+                        <option value="other">
+                          {tr('register.occupations.other') || 'Outdoor Worker'}
+                        </option>
+                      </select>
+                    </div>
+                  ) : (
+                    /* Show role badge card for non-workers */
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+                        Account Role
+                      </label>
+                      <div className="chhaya-input bg-gray-50 border-gray-200 text-gray-700 font-semibold capitalize flex items-center justify-between">
+                        <span>{formData.role}</span>
+                        <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full uppercase">
+                          System Role
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Emergency Contact Information */}
+                <div className="pt-2 border-t border-orange-100/60 mt-3">
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-orange-900 mb-3">
+                    Emergency Contact Details (for SOS & alerts)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="settings-emergency-name"
+                        className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5"
+                      >
+                        {tr('settings.emergencyName')}
+                      </label>
+                      <input
+                        id="settings-emergency-name"
+                        name="emergencyContactName"
+                        type="text"
+                        value={formData.emergencyContactName}
+                        onChange={handleChange}
+                        placeholder={tr('settings.emergencyNamePlaceholder')}
+                        className="chhaya-input bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label
+                          htmlFor="settings-emergency-phone"
+                          className="block text-xs font-bold text-gray-700 uppercase tracking-wide"
+                        >
+                          {tr('settings.emergencyPhone')}
+                        </label>
+                        {formData.emergencyContactPhone && (
+                          <span className="text-[11px] font-semibold text-gray-400">
+                            {formData.emergencyContactPhone.length}/10
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        id="settings-emergency-phone"
+                        name="emergencyContactPhone"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={formData.emergencyContactPhone}
+                        onChange={handleEmergencyPhoneChange}
+                        placeholder={tr('settings.emergencyPhonePlaceholder')}
+                        className="chhaya-input bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Save Button */}
+                <div className="pt-4 flex items-center justify-end">
+                  <button
+                    type="submit"
+                    id="settings-save-profile-btn"
+                    disabled={saving}
+                    className="chhaya-btn-primary px-8 py-3.5 text-sm font-bold flex items-center justify-center cursor-pointer disabled:opacity-60 shadow-md active:scale-98"
+                  >
+                    {saving ? (
+                      <>
+                        <Spinner />
+                        <span>{tr('settings.saving')}</span>
+                      </>
+                    ) : (
+                      <span>{tr('settings.saveChanges')}</span>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* SECTION B: Security & Password                                 */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-orange-100 shadow-sm">
+              <div className="border-b border-orange-100/70 pb-4 mb-6">
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ea580c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <span>{tr('settings.securityTitle')}</span>
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  {tr('settings.securitySubtitle')}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-orange-50/50 border border-orange-100/60">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 mb-0.5">Password</h3>
+                  <p className="text-xs text-gray-500">
+                    Keep your account secure by using a strong password.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  id="settings-change-password-btn"
+                  onClick={() => {
+                    setShowPasswordForm(!showPasswordForm);
+                    setPasswordStatus(null);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-orange-200 bg-white text-orange-800 hover:bg-orange-50 hover:border-orange-300 transition-all shadow-2xs cursor-pointer active:scale-98"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 2l-2 2m-1.5 1.5L4 19l-2 3 3-2 13.5-13.5M16 5l3 3"/>
+                  </svg>
+                  <span>{showPasswordForm ? 'Close Form ✕' : (tr('settings.changePassword') || 'Change Password')}</span>
+                </button>
+              </div>
+
+              {/* Expandable Change Password Form */}
+              {showPasswordForm && (
+                <div className="mt-5 p-5 sm:p-6 rounded-2xl bg-white border border-orange-200 shadow-xs animate-fadeIn">
+                  <div className="border-b border-orange-100 pb-3 mb-4">
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {tr('settings.changePassword') || 'Change Password'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Enter your current password and choose a strong new password.
+                    </p>
+                  </div>
+
+                  {/* Password Status Alert */}
+                  {passwordStatus && (
+                    <div
+                      className={`alert mb-4 shadow-xs ${
+                        passwordStatus.type === 'success' ? 'alert-success' : 'alert-error'
+                      }`}
+                    >
+                      <span>{passwordStatus.type === 'success' ? '✅' : '⚠️'}</span>
+                      <span>{passwordStatus.text}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    {/* Current Password */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        Current Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          name="currentPassword"
+                          value={passwordData.currentPassword}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))
+                          }
+                          placeholder="••••••••"
+                          className="chhaya-input bg-white pr-10"
+                          required
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1"
+                          title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showCurrentPassword ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        New Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          name="newPassword"
+                          value={passwordData.newPassword}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
+                          }
+                          placeholder="••••••••"
+                          className="chhaya-input bg-white pr-10"
+                          required
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1"
+                          title={showNewPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showNewPassword ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+
+                      {/* Password requirements hint checklist */}
+                      {passwordData.newPassword && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-orange-50/70 border border-orange-100 text-[11px] space-y-1">
+                          <p className="font-bold text-gray-700 mb-1">Password Requirements:</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            {(() => {
+                              const crit = evaluatePassword(passwordData.newPassword);
+                              return (
+                                <>
+                                  <span className={`flex items-center gap-1.5 ${crit.length ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.length ? '✓' : '○'}</span> At least 8 characters
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.upper ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.upper ? '✓' : '○'}</span> One uppercase letter (A-Z)
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.lower ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.lower ? '✓' : '○'}</span> One lowercase letter (a-z)
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.number ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.number ? '✓' : '○'}</span> One number (0-9)
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.special ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.special ? '✓' : '○'}</span> One symbol (!@#$%^&*)
+                                  </span>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Confirm New Password */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        Confirm New Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          name="confirmPassword"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                          }
+                          placeholder="••••••••"
+                          className="chhaya-input bg-white pr-10"
+                          required
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1"
+                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showConfirmPassword ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                      {passwordData.confirmPassword && (
+                        <p className={`text-[11px] mt-1 font-semibold ${
+                          passwordData.newPassword === passwordData.confirmPassword
+                            ? 'text-emerald-600'
+                            : 'text-red-500'
+                        }`}>
+                          {passwordData.newPassword === passwordData.confirmPassword
+                            ? '✓ Passwords match'
+                            : '✕ Passwords do not match'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPasswordForm(false);
+                          setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                          setPasswordStatus(null);
+                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={changingPassword}
+                        className="chhaya-btn-primary w-full sm:w-auto px-6 py-2.5 text-xs font-bold shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      >
+                        {changingPassword ? (
+                          <>
+                            <Spinner />
+                            <span>Updating Password...</span>
+                          </>
+                        ) : (
+                          <span>🔒 Update Password</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* Live Device Camera Modal                                      */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {cameraActive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl border border-orange-200 animate-scaleUp">
+            {/* Modal header */}
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center font-bold">
+                  📷
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-gray-900">
+                    {tr('settings.cameraModalTitle')}
+                  </h3>
+                  <p className="text-[11px] text-gray-500">Center your face and tap capture</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleStopCamera}
+                className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center transition-colors cursor-pointer text-sm font-bold"
+                aria-label="Close Camera"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Video preview / error */}
+            <div className="p-4 sm:p-5 flex flex-col items-center">
+              {cameraError ? (
+                <div className="w-full py-12 px-4 rounded-2xl bg-red-50 border border-red-200 text-center">
+                  <p className="text-2xl mb-2">⚠️</p>
+                  <p className="text-sm font-bold text-red-700 mb-1">Camera Permission Required</p>
+                  <p className="text-xs text-red-600">{cameraError}</p>
+                </div>
+              ) : (
+                <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden border-4 border-orange-400 shadow-inner bg-black flex items-center justify-center">
+                  <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover transform -scale-x-100"
+                  />
+                  {/* Subtle target circle */}
+                  <div className="absolute inset-4 rounded-full border-2 border-white/40 pointer-events-none" />
+                </div>
+              )}
+            </div>
+
+            {/* Modal footer action buttons */}
+            <div className="p-4 sm:p-5 bg-gray-50 border-t border-gray-100 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleStopCamera}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-gray-600 hover:bg-gray-200 transition-colors cursor-pointer"
+              >
+                {tr('settings.cancelCamera')}
+              </button>
+
+              {!cameraError && (
+                <button
+                  type="button"
+                  id="camera-capture-btn"
+                  disabled={photoUploading}
+                  onClick={handleCapturePhoto}
+                  className="chhaya-btn-primary px-6 py-2.5 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <span>📸</span>
+                  <span>{photoUploading ? 'Saving...' : tr('settings.capture')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+export default Settings;
+

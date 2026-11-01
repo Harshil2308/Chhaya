@@ -1,22 +1,30 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 
 const SunIcon = ({ size = 20 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <circle cx="12" cy="12" r="4.5" fill="white" />
-    {[0,45,90,135,180,225,270,315].map((deg, i) => (
-      <line key={i} x1="12" y1="2.5" x2="12" y2="4.5"
-        stroke="white" strokeWidth="2" strokeLinecap="round"
-        transform={`rotate(${deg} 12 12)`} />
+    {[0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => (
+      <line
+        key={i}
+        x1="12"
+        y1="2.5"
+        x2="12"
+        y2="4.5"
+        stroke="white"
+        strokeWidth="2"
+        strokeLinecap="round"
+        transform={`rotate(${deg} 12 12)`}
+      />
     ))}
   </svg>
 );
 
-const SettingsIcon = ({ size = 15 }) => (
+const SettingsIcon = ({ size = 16 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
     <circle cx="12" cy="12" r="3"/>
-    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
   </svg>
 );
 
@@ -50,33 +58,20 @@ export function LanguageSwitcher({ className = '' }) {
   );
 }
 
-// Avatar component — shows profile photo or initial letter
-function Avatar({ user, size = 8 }) {
-  const initials = user?.name?.charAt(0)?.toUpperCase() || 'U';
-  const sizeClass = `w-${size} h-${size}`;
-
-  if (user?.profilePhoto) {
-    return (
-      <div className={`${sizeClass} rounded-full overflow-hidden border-2 border-orange-200 shadow-sm`}>
-        <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`${sizeClass} rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm`}
-      style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
-    >
-      {initials}
-    </div>
-  );
-}
-
 function Navbar({ user }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const { tr } = useLanguage();
+
+  // Try passed user prop first, then fall back to localStorage
+  const currentUser = user || (() => {
+    try {
+      const stored = localStorage.getItem('user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  })();
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -86,15 +81,25 @@ function Navbar({ user }) {
   };
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-orange-100"
-      style={{ boxShadow: '0 1px 8px rgba(249,115,22,0.08)' }}>
+    <nav
+      className="sticky top-0 z-50 bg-white border-b border-orange-100"
+      style={{ boxShadow: '0 1px 8px rgba(249,115,22,0.08)' }}
+    >
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16">
-
           {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm"
-              style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
+          <div
+            onClick={() => {
+              if (currentUser?.role === 'admin') navigate('/admin');
+              else if (currentUser?.role === 'manager') navigate('/manager');
+              else navigate('/dashboard');
+            }}
+            className="flex items-center gap-2.5 cursor-pointer select-none"
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm"
+              style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
+            >
               <SunIcon size={18} />
             </div>
             <span className="text-xl font-extrabold text-gray-900 tracking-tight">Chhaya</span>
@@ -105,36 +110,54 @@ function Navbar({ user }) {
             {/* Language switcher — always visible */}
             <LanguageSwitcher />
 
-            {user && (
+            {currentUser && (
               <>
-                {/* Settings link */}
-                <Link
-                  to="/settings"
-                  id="nav-settings-link"
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 text-gray-600 hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 transition-all text-xs font-semibold"
+                {/* Settings Button */}
+                <button
+                  id="nav-settings-btn"
+                  onClick={() => navigate('/settings')}
+                  title={tr('settings.title') || 'Settings'}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold border border-orange-200 bg-orange-50 text-orange-900 hover:bg-orange-100 hover:border-orange-300 transition-all duration-150 cursor-pointer shadow-2xs"
                 >
-                  <SettingsIcon size={14} />
-                  <span>Settings</span>
-                </Link>
+                  <SettingsIcon size={15} />
+                  <span>{tr('settings.title') || 'Settings'}</span>
+                </button>
 
-                {/* Clickable avatar/name → /settings */}
-                <Link
-                  to="/settings"
-                  id="nav-avatar-link"
-                  className="flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-2 hover:bg-orange-100 transition-colors"
+                {/* User Avatar & Name — clickable to Settings */}
+                <div
+                  id="nav-user-profile-badge"
+                  onClick={() => navigate('/settings')}
+                  title="View Settings & Profile"
+                  className="flex items-center gap-2.5 bg-orange-50 border border-orange-100 rounded-2xl px-3.5 py-1.5 cursor-pointer hover:bg-orange-100/70 hover:border-orange-200 transition-all duration-200 select-none shadow-2xs"
                 >
-                  <Avatar user={user} size={8} />
+                  {currentUser.profilePhoto ? (
+                    <img
+                      src={currentUser.profilePhoto}
+                      alt={currentUser.name}
+                      className="w-8 h-8 rounded-full object-cover shadow-xs border border-orange-200"
+                    />
+                  ) : (
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-xs shrink-0"
+                      style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
+                    >
+                      {currentUser.name?.charAt(0)?.toUpperCase() || 'U'}
+                    </div>
+                  )}
                   <div className="leading-tight">
-                    <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                    <p className="text-xs text-orange-500 capitalize font-medium">
-                      {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : tr('register.roleWorker')}
+                    <p className="text-sm font-semibold text-gray-800">{currentUser.name}</p>
+                    <p className="text-xs text-orange-600 capitalize font-medium">
+                      {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'manager' ? 'Manager' : tr('register.roleWorker')}
                     </p>
                   </div>
-                </Link>
+                </div>
 
-                <button onClick={handleLogout}
-                  className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50
-                             hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200">
+                {/* Logout Button */}
+                <button
+                  id="nav-logout-btn"
+                  onClick={handleLogout}
+                  className="px-4 py-2 rounded-xl text-sm font-semibold border border-red-200 text-red-600 bg-red-50 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all duration-200 cursor-pointer shadow-2xs"
+                >
                   {tr('common.logout')}
                 </button>
               </>
@@ -142,53 +165,69 @@ function Navbar({ user }) {
           </div>
 
           {/* Mobile hamburger */}
-          {user && (
-            <button className="sm:hidden p-2 rounded-xl text-gray-600 hover:bg-orange-50 transition-colors"
-              onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle menu">
+          {currentUser && (
+            <button
+              className="sm:hidden p-2 rounded-xl text-gray-600 hover:bg-orange-50 transition-colors"
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle menu"
+            >
               {menuOpen ? '✕' : '☰'}
             </button>
           )}
         </div>
 
         {/* Mobile dropdown */}
-        {user && menuOpen && (
+        {currentUser && menuOpen && (
           <div className="sm:hidden border-t border-orange-100 py-4 space-y-3 px-1">
             {/* Language switcher mobile */}
             <div className="flex justify-center">
               <LanguageSwitcher />
             </div>
 
-            {/* Clickable profile area → /settings */}
-            <Link
-              to="/settings"
-              id="nav-mobile-avatar-link"
-              onClick={() => setMenuOpen(false)}
-              className="flex items-center gap-3 p-3 bg-orange-50 rounded-2xl hover:bg-orange-100 transition-colors"
+            {/* User Info clickable to Settings */}
+            <div
+              onClick={() => { setMenuOpen(false); navigate('/settings'); }}
+              className="flex items-center gap-3 p-3 bg-orange-50 rounded-2xl cursor-pointer hover:bg-orange-100/70 transition-colors shadow-2xs"
             >
-              <Avatar user={user} size={9} />
-              <div>
-                <p className="text-sm font-semibold text-gray-800">{user.name}</p>
-                <p className="text-xs text-orange-500 capitalize">
-                  {user.role === 'admin' ? 'Admin' : user.role === 'manager' ? 'Manager' : tr('register.roleWorker')} · Tap to edit profile
+              {currentUser.profilePhoto ? (
+                <img
+                  src={currentUser.profilePhoto}
+                  alt={currentUser.name}
+                  className="w-10 h-10 rounded-full object-cover shadow-xs border border-orange-200"
+                />
+              ) : (
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white text-base font-bold shrink-0"
+                  style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}
+                >
+                  {currentUser.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+              )}
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-800">{currentUser.name}</p>
+                <p className="text-xs text-orange-600 capitalize">
+                  {currentUser.role === 'admin' ? 'Admin' : currentUser.role === 'manager' ? 'Manager' : tr('register.roleWorker')}
                 </p>
               </div>
-            </Link>
+              <span className="text-xs font-semibold text-orange-600 bg-white/80 px-2 py-1 rounded-lg border border-orange-200">
+                {tr('settings.title') || 'Settings'} →
+              </span>
+            </div>
 
-            {/* Settings link mobile */}
-            <Link
-              to="/settings"
-              id="nav-mobile-settings-link"
-              onClick={() => setMenuOpen(false)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold
-                         bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition-all"
+            {/* Mobile Settings button */}
+            <button
+              onClick={() => { setMenuOpen(false); navigate('/settings'); }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold bg-orange-50 text-orange-900 border border-orange-200 hover:bg-orange-100 transition-all duration-200 cursor-pointer shadow-2xs"
             >
-              <SettingsIcon size={15} />
-              <span>Settings & Profile</span>
-            </Link>
+              <SettingsIcon size={16} />
+              <span>{tr('settings.title') || 'Settings'}</span>
+            </button>
 
-            <button onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold
-                         bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white transition-all duration-200">
+            {/* Mobile Logout button */}
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-500 hover:text-white transition-all duration-200 cursor-pointer shadow-2xs"
+            >
               {tr('common.logout')}
             </button>
           </div>

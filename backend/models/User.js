@@ -5,6 +5,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    sparse: true,
+    unique: true
+  },
   phone: {
     type: String,
     required: true,
@@ -13,6 +20,10 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true
+  },
+  profilePhoto: {
+    type: String,
+    default: ''
   },
   role: {
     type: String,

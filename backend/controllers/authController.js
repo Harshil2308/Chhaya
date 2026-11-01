@@ -11,7 +11,7 @@ const buildUserResponse = (user) => ({
   email: user.email || '',
   role: user.role,
   occupation: user.occupation || 'other',
-  location: user.location,
+  location: user.location || '',
   city: user.city || '',
   areaName: user.areaName || '',
   managedCity: user.managedCity || '',
@@ -227,39 +227,59 @@ const updateMe = async (req, res) => {
     const phoneRegex = /^[6-9]\d{9}$/;
 
     // Name
-    if (name !== undefined && name.trim()) {
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: 'Full Name cannot be empty' });
+      }
       user.name = name.trim();
     }
 
-    // Email (optional, validate format if provided)
-    if (email !== undefined) {
-      const trimmedEmail = email.trim().toLowerCase();
-      if (trimmedEmail === '') {
-        user.email = '';
-      } else {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(trimmedEmail)) {
-          return res.status(400).json({ message: 'Please enter a valid email address' });
-        }
-        user.email = trimmedEmail;
-      }
-    }
-
-    // Phone number (allow change if valid and not taken by another user)
+    // Phone validation & uniqueness check
     if (phone !== undefined && phone.trim()) {
       const trimmedPhone = phone.trim();
       if (!phoneRegex.test(trimmedPhone)) {
         return res.status(400).json({
-          message: 'Phone number must be a valid 10-digit mobile number starting with 6, 7, 8, or 9'
+          message: 'Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9'
         });
       }
-      // Check for duplicate phone (exclude self)
+
       if (trimmedPhone !== user.phone) {
-        const existing = await User.findOne({ phone: trimmedPhone });
-        if (existing) {
-          return res.status(400).json({ message: 'This phone number is already registered to another account' });
+        const phoneExists = await User.findOne({
+          phone: trimmedPhone,
+          _id: { $ne: user._id }
+        });
+        if (phoneExists) {
+          return res.status(400).json({
+            message: 'Phone number is already registered to another account'
+          });
         }
         user.phone = trimmedPhone;
+      }
+    }
+
+    // Email validation & uniqueness check (optional)
+    if (email !== undefined) {
+      const trimmedEmail = email ? email.toLowerCase().trim() : '';
+      if (trimmedEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+          return res.status(400).json({
+            message: 'Please enter a valid email address'
+          });
+        }
+
+        const emailExists = await User.findOne({
+          email: trimmedEmail,
+          _id: { $ne: user._id }
+        });
+        if (emailExists) {
+          return res.status(400).json({
+            message: 'Email address is already in use by another account'
+          });
+        }
+        user.email = trimmedEmail;
+      } else {
+        user.email = '';
       }
     }
 
@@ -298,7 +318,7 @@ const updateMe = async (req, res) => {
       const trimmedPhone = emergencyContactPhone.trim();
       if (trimmedPhone && !phoneRegex.test(trimmedPhone)) {
         return res.status(400).json({
-          message: 'Emergency contact phone must be a valid 10-digit Indian mobile number'
+          message: 'Emergency contact phone must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9'
         });
       }
       user.emergencyContactPhone = trimmedPhone;
@@ -312,9 +332,14 @@ const updateMe = async (req, res) => {
       }
     }
 
-    // Profile photo (base64 data URL; store as-is, max ~400px is handled client-side)
+    // Profile photo
     if (profilePhoto !== undefined) {
-      user.profilePhoto = profilePhoto; // empty string clears it
+      user.profilePhoto = profilePhoto || '';
+    }
+
+    // Ensure required location field is never empty to prevent validation failure
+    if (!user.location || !user.location.trim()) {
+      user.location = (location && location.trim()) ? location.trim() : 'Ahmedabad';
     }
 
     await user.save();
@@ -322,6 +347,69 @@ const updateMe = async (req, res) => {
     res.json({
       message: 'Profile updated successfully',
       user: buildUserResponse(user)
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Change Password (PUT /api/auth/change-password)
+const changePassword = async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword) {
+      return res.status(400).json({ message: 'Current password is required' });
+    }
+    if (!newPassword) {
+      return res.status(400).json({ message: 'New password is required' });
+    }
+
+    // Query user with password hash
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify oldPassword against stored hash
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Validate newPassword rules: min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({
+        message: 'New password must be at least 8 characters long'
+      });
+    }
+
+    const hasUpper = /[A-Z]/.test(newPassword);
+    const hasLower = /[a-z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    const hasSpecial = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(newPassword);
+
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+      return res.status(400).json({
+        message: 'New password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
+      });
+    }
+
+    // Check if new password is same as current password
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({
+        message: 'New password cannot be the same as your current password'
+      });
+    }
+
+    // Hash and save new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({
+      message: 'Password changed successfully'
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -339,4 +427,4 @@ const getMe = async (req, res) => {
   }
 };
 
-module.exports = { register, login, updateMe, getMe };
+module.exports = { register, login, updateMe, changePassword, getMe };

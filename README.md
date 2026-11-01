@@ -30,6 +30,7 @@ Extreme heat events and heatwaves in India present severe occupational hazards f
 - Features an **emergency SOS response system** with 108 emergency calling, a dedicated national heat helpline, and instant WhatsApp location dispatch.
 - Accommodates language and literacy barriers through **multilingual support (English, हिन्दी, ગુજરાતી)** and **high-fidelity voice read-aloud via Sarvam AI (`bulbul:v3`)**.
 - Offers a dedicated **Manager Dashboard** for site supervisors to enforce safety protocols and monitor worker hydration in real time.
+- Delivers a unified **Profile Settings & Security portal** supporting live device camera captures, avatar compression, contact customization, and in-app password changes.
 
 ---
 
@@ -61,7 +62,20 @@ Extreme heat events and heatwaves in India present severe occupational hazards f
 * Instant dialer to the National Heat Helpline (`1800-180-1104`).
 * Instant WhatsApp SOS trigger sending live GPS coordinates and emergency distress messages to registered contacts.
 
-### 🩹 7. First-Aid Heat Illness Guide
+### ⚙️ 7. Unified Profile Settings & Live Camera Avatar Capture
+* Dedicated `/settings` portal available across all roles (**Worker**, **Manager**, **Admin**).
+* **Live WebRTC Camera Capture:** Prompts for camera permission, displays real-time video preview with a circular alignment guide, enables front/rear camera flipping, and captures centered square avatars.
+* **Client-Side Compression:** Canvas helper compresses uploaded and captured images to lightweight JPEG data URLs (~40–80KB) to ensure rapid loading and database efficiency.
+* **Role-Adaptive Fields:** Shows "Occupation / Work Sector" strictly for Workers while cleanly hiding it for Managers and Admins.
+* **Contact & Identifier Management:** Updatable name, optional email with uniqueness validation, verified 10-digit login mobile number, location, preferred language, and SOS emergency contact.
+
+### 🔒 8. In-App Security & Change Password
+* Embedded collapsible **Change Password** workflow directly inside the Settings page.
+* Full bcrypt cryptographic verification of current password before permitting updates.
+* Live password criteria checklist enforcing 8+ characters, uppercase, lowercase, numbers, and symbols.
+* Immediate feedback with backend error propagation and session preservation upon successful password changes.
+
+### 🩹 9. First-Aid Heat Illness Guide
 * Rapid, illustrated guidance for identifying symptoms and taking first-aid actions for:
   * Heat Stroke (Emergency medical protocol)
   * Heat Exhaustion
@@ -69,7 +83,7 @@ Extreme heat events and heatwaves in India present severe occupational hazards f
   * Heat Rash
   * Dehydration
 
-### 🗣️ 8. Multilingual Support & Sarvam AI Voice Read-Aloud
+### 🗣️ 10. Multilingual Support & Sarvam AI Voice Read-Aloud
 * Full UI static localization across 3 languages: **English**, **Hindi (हिन्दी)**, and **Gujarati (ગુજરાતી)**.
 * Integrated Indian-language TTS powered by Sarvam AI (`bulbul:v3`, speaker `ritu`) with automated Indic translation, in-memory MD5 caching, and native browser SpeechSynthesis fallback for low-literacy workers.
 * AI conversational heat-safety assistant powered by Sarvam AI (`sarvam-105b-conversations`) with rate limiting and emergency phrase interception.
@@ -85,6 +99,7 @@ Chhaya provides specialized interfaces customized for each user role:
 | **Worker** | `/dashboard` | Personalized heat index, shift planner, cooling center map with distances, hotspot reporting, team hydration check-in, and emergency SOS dispatch. |
 | **Manager** | `/manager` | Worksite heat conditions overview, 6-step interactive worksite safety checklist, shift planning, cooling center navigation, heat hotspot oversight, and quick emergency actions. |
 | **Admin** | `/admin` | Administrative management: add/delete verified cooling centers, verify or resolve worker-reported hotspots, and audit safety alerts. |
+| **All Roles** | `/settings` | Profile customization, live camera photo capture, gallery upload, contact preferences, and secure password updates. |
 
 ### 👤 Demo & Seeded Accounts
 
@@ -103,19 +118,21 @@ Chhaya provides specialized interfaces customized for each user role:
 | :--- | :--- | :--- |
 | **React** | `^19.2.8` | Component-based UI framework |
 | **Vite** | `^8.2.0` | Frontend build tool and rapid development server |
-| **React Router DOM** | `^7.18.2` | Client-side routing (`/login`, `/register`, `/dashboard`, `/manager`, `/admin`, `/first-aid`) |
+| **React Router DOM** | `^7.18.2` | Client-side routing (`/login`, `/register`, `/dashboard`, `/manager`, `/admin`, `/first-aid`, `/settings`) |
 | **Leaflet & React-Leaflet** | `^1.9.4` / `^5.0.0` | Interactive mapping for cooling centers and heat hotspots |
 | **Tailwind CSS** | `^4.3.3` | Utility-first CSS styling (via `@tailwindcss/vite`) |
-| **Axios** | `^1.19.0` | HTTP client for backend REST API requests |
+| **Axios** | `^1.19.0` | HTTP client for backend REST API requests with Bearer token interceptor |
+| **WebRTC MediaDevices API** | Browser Native | Live camera stream access (`getUserMedia`) for profile photo capture |
+| **HTML5 Canvas API** | Browser Native | Dynamic image scaling & compression to lightweight Base64 data URLs |
 | **Oxlint** | `^1.75.0` | Ultra-fast linter for JavaScript and JSX code quality |
 
 ### **Backend (`/backend`)**
 | Package | Version | Purpose |
 | :--- | :--- | :--- |
-| **Express** | `^5.2.1` | REST API application framework for Node.js |
+| **Express** | `^5.2.1` | REST API application framework for Node.js (configured with 10MB body limits for avatar payloads) |
 | **MongoDB / Mongoose** | `^7.5.0` / `^9.8.1` | Database client and Object Data Modeling (ODM) |
 | **JSONWebToken (`jsonwebtoken`)** | `^9.0.3` | Role-based token authentication & route protection |
-| **BcryptJS (`bcryptjs`)** | `^3.0.3` | Password hashing for secure user registration and login |
+| **BcryptJS (`bcryptjs`)** | `^3.0.3` | Password hashing for secure user registration, login, and change-password verification |
 | **Dotenv (`dotenv`)** | `^17.4.2` | Environment variable management |
 | **Cors (`cors`)** | `^2.8.6` | Cross-Origin Resource Sharing middleware |
 | **Express Rate Limit** | `^8.7.1` | API rate limiting (protects TTS and AI assistant endpoints) |
@@ -141,7 +158,7 @@ Chhaya/
 │   ├── controllers/          # Business logic handlers
 │   │   ├── alertController.js
 │   │   ├── assistantController.js
-│   │   ├── authController.js
+│   │   ├── authController.js # Auth, Profile, and Password Change controllers
 │   │   ├── checkInController.js
 │   │   ├── coolingCenterController.js
 │   │   ├── hotspotController.js
@@ -151,7 +168,7 @@ Chhaya/
 │   ├── routes/               # API endpoint definitions
 │   │   ├── alertRoutes.js
 │   │   ├── assistantRoutes.js
-│   │   ├── authRoutes.js
+│   │   ├── authRoutes.js     # /register, /login, /me, /change-password
 │   │   ├── checkInRoutes.js
 │   │   ├── coolingCenterRoutes.js
 │   │   ├── hotspotRoutes.js
@@ -168,13 +185,13 @@ Chhaya/
     ├── public/               # Public static assets
     ├── src/
     │   ├── assets/           # Project imagery & vector icons
-    │   ├── components/       # Reusable components (HeatHelper, MapView, SunPanel, SafeShiftPlanner, ListenButton, etc.)
+    │   ├── components/       # Reusable components (Navbar, HeatHelper, MapView, SunPanel, SafeShiftPlanner, etc.)
     │   ├── context/          # React context providers (AuthContext, LanguageContext)
     │   ├── locales/          # Static translations (English, Hindi, Gujarati)
-    │   ├── pages/            # Views (Login, Register, UserDashboard, ManagerDashboard, AdminDashboard, FirstAid)
-    │   ├── services/         # Axios instance and API call abstractions
+    │   ├── pages/            # Views (Login, Register, UserDashboard, ManagerDashboard, AdminDashboard, FirstAid, Settings)
+    │   ├── services/         # Axios instance (API) and endpoint call abstractions
     │   ├── utils/            # Helper functions (geoDistance, personalizedRisk)
-    │   ├── App.jsx           # Top-level client routing
+    │   ├── App.jsx           # Top-level client routing including /settings
     │   └── main.jsx          # React DOM mounting entry point
     ├── .gitignore            # Frontend Git ignore rules
     ├── index.html            # HTML document template
@@ -296,8 +313,6 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-### Pre-Configuring the Official Manager Account
-
 ### Pre-Configuring the Official Manager & Admin Accounts
 
 To seed or verify the official fixed Manager and Admin accounts, run:
@@ -318,6 +333,7 @@ Open `http://localhost:5173` in your browser:
 * **Worker:** Register on `/register` (public registration is restricted to Worker accounts) and land on `/dashboard`.
 * **Manager:** Log in with `9876501234` / `Manager@123` to land on `/manager`.
 * **Admin:** Log in with `9876504321` / `Admin@123` to land on `/admin`.
+* **Settings:** Access `/settings` from the top navigation bar or by clicking on your avatar.
 
 ---
 
@@ -325,13 +341,14 @@ Open `http://localhost:5173` in your browser:
 
 All endpoints except authentication and assistant status require an `Authorization: Bearer <token>` header.
 
-### **1. Authentication (`/api/auth`)**
+### **1. Authentication & Profile (`/api/auth`)**
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Register user (`name`, `phone`, `password`, `occupation`, `location`, `language`). Registration is strictly restricted to `worker` role; attempts to register manager/admin are enforced to worker. |
-| `POST` | `/api/auth/login` | Public | Authenticate with `phone` & `password`; returns JWT token & user object |
+| `POST` | `/api/auth/register` | Public | Register user (`name`, `phone`, `password`, `occupation`, `location`, `language`, `email?`, `profilePhoto?`). Registration is strictly restricted to `worker` role. |
+| `POST` | `/api/auth/login` | Public | Authenticate with `phone` & `password`; returns JWT token & user profile object |
 | `GET` | `/api/auth/me` | Protected | Fetch current authenticated user's profile |
-| `PUT` | `/api/auth/me` | Protected | Update profile, occupation, city location, or preferred language |
+| `PUT` | `/api/auth/me` | Protected | Update profile fields (`name`, `email`, `phone`, `occupation` for workers, `location`, `emergencyContactName`, `emergencyContactPhone`, `language`, `profilePhoto`) |
+| `PUT` | `/api/auth/change-password` | Protected | Change password (`oldPassword`, `newPassword`). Enforces current password bcrypt check and strong password rules. |
 
 ### **2. Heat Alerts & Guidance (`/api/alerts`)**
 | Method | Endpoint | Access | Description |
@@ -384,7 +401,7 @@ All endpoints except authentication and assistant status require an `Authorizati
    npm run install:all
    ```
 3. **Use Meaningful Commits**:
-   Keep commits focused on specific features or fixes (e.g., `fix: resolve MongoDB connection retry loop`, `feat: enhance manager worksite safety dashboard`).
+   Keep commits focused on specific features or fixes (e.g., `feat: implement profile settings and in-app password change`).
 
 ---
 
@@ -409,11 +426,21 @@ All endpoints except authentication and assistant status require an `Authorizati
   Stop-Process -Id <PID> -Force
   ```
 
-#### Q4: Weather data shows fallback or fails to load
+#### Q4: Camera does not open when clicking "Take Photo" in Settings
+* **Cause**: The browser blocked camera permissions or the site is being accessed over an insecure connection (WebRTC requires `localhost` or `HTTPS`).
+* **Fix**:
+  * In Chrome/Edge: Click the lock/settings icon in the URL address bar and set **Camera** to **Allow**.
+  * Use the "Choose from Gallery" button as a quick alternative to upload an image from storage.
+
+#### Q5: Password update fails with "Current password is incorrect"
+* **Cause**: The entered current password does not match the hashed password stored in the database.
+* **Fix**: Ensure you enter your exact current password (case-sensitive) before setting a new password.
+
+#### Q6: Weather data shows fallback or fails to load
 * **Cause**: `WEATHER_API_KEY` is missing or invalid in `backend/.env`.
 * **Fix**: Sign up for a free OpenWeatherMap API key at [openweathermap.org](https://openweathermap.org/) and place it in `backend/.env`. The backend has built-in offline fallbacks to keep the UI functioning even during API limits.
 
-#### Q5: Voice read-aloud button does not play audio
+#### Q7: Voice read-aloud button does not play audio
 * **Cause**: `SARVAM_API_KEY` is not configured.
 * **Fix**: Without a Sarvam AI key, the application automatically falls back to your browser's native Web Speech API synthesis. Configure `SARVAM_API_KEY` in `backend/.env` to enable natural Indian accent voices (`bulbul:v3`, speaker `ritu`).
 

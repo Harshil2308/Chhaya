@@ -355,21 +355,29 @@ function ManagerDashboard() {
           {/* Right */}
           <div className="flex items-center gap-2.5">
             <LanguageSwitcher />
-            <Link
-              to="/settings"
-              className="flex items-center gap-1.5 text-xs font-medium text-gray-600 hover:text-orange-600 px-2.5 py-1.5 rounded-lg border border-gray-200 hover:border-orange-200 hover:bg-orange-50 transition-colors"
+            <button
+              onClick={() => navigate('/settings')}
+              title="Settings"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-orange-200 bg-orange-50 text-orange-800 hover:bg-orange-100 transition-colors cursor-pointer"
             >
-              ⚙️ <span className="hidden sm:inline">Settings</span>
-            </Link>
-            <Link
-              to="/settings"
-              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 hover:bg-orange-50 hover:border-orange-200 transition-colors"
-              title="Click to view Settings"
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span className="hidden sm:inline">Settings</span>
+            </button>
+
+            <div
+              onClick={() => navigate('/settings')}
+              title="Go to Settings"
+              className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 hover:bg-orange-50 hover:border-orange-200 transition-colors cursor-pointer select-none"
             >
               {user.profilePhoto ? (
-                <div className="w-6 h-6 rounded-full overflow-hidden border border-orange-200">
-                  <img src={user.profilePhoto} alt={user.name} className="w-full h-full object-cover" />
-                </div>
+                <img
+                  src={user.profilePhoto}
+                  alt={user.name}
+                  className="w-6 h-6 rounded-full object-cover shadow-xs border border-orange-200"
+                />
               ) : (
                 <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
                   style={{ background: 'linear-gradient(135deg,#e06010,#c97d08)' }}>
@@ -377,7 +385,7 @@ function ManagerDashboard() {
                 </div>
               )}
               <span className="text-sm font-medium text-gray-700">{user.name}</span>
-            </Link>
+            </div>
             <button
               onClick={handleLogout}
               className="text-sm font-medium text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors duration-150"
