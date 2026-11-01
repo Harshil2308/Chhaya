@@ -115,13 +115,15 @@ const register = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        email: user.email || '',
         phone: user.phone,
         role: user.role,
         occupation: user.occupation || 'other',
         location: user.location,
         emergencyContactName: user.emergencyContactName || '',
         emergencyContactPhone: user.emergencyContactPhone || '',
-        language: user.language || 'en'
+        language: user.language || 'en',
+        profilePhoto: user.profilePhoto || ''
       }
     });
   } catch (error) {
@@ -167,13 +169,15 @@ const login = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        email: user.email || '',
         phone: user.phone,
         role: user.role,
         occupation: user.occupation || 'other',
         location: user.location,
         emergencyContactName: user.emergencyContactName || '',
         emergencyContactPhone: user.emergencyContactPhone || '',
-        language: user.language || 'en'
+        language: user.language || 'en',
+        profilePhoto: user.profilePhoto || ''
       }
     });
   } catch (error) {
@@ -186,11 +190,14 @@ const updateMe = async (req, res) => {
   try {
     const {
       name,
+      email,
+      phone,
       occupation,
       location,
       emergencyContactName,
       emergencyContactPhone,
-      language
+      language,
+      profilePhoto
     } = req.body;
 
     const user = await User.findById(req.user._id);
@@ -198,9 +205,64 @@ const updateMe = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    if (name) user.name = name.trim();
+    if (name !== undefined) {
+      if (!name || !name.trim()) {
+        return res.status(400).json({ message: 'Full Name cannot be empty' });
+      }
+      user.name = name.trim();
+    }
 
-    if (occupation) {
+    // Phone validation & uniqueness check
+    if (phone !== undefined) {
+      const trimmedPhone = phone.trim();
+      const phoneRegex = /^[6-9]\d{9}$/;
+      if (!phoneRegex.test(trimmedPhone)) {
+        return res.status(400).json({
+          message: 'Phone number must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9'
+        });
+      }
+
+      if (trimmedPhone !== user.phone) {
+        const phoneExists = await User.findOne({
+          phone: trimmedPhone,
+          _id: { $ne: user._id }
+        });
+        if (phoneExists) {
+          return res.status(400).json({
+            message: 'Phone number is already registered to another account'
+          });
+        }
+        user.phone = trimmedPhone;
+      }
+    }
+
+    // Email validation & uniqueness check (optional)
+    if (email !== undefined) {
+      const trimmedEmail = email ? email.toLowerCase().trim() : '';
+      if (trimmedEmail) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) {
+          return res.status(400).json({
+            message: 'Please enter a valid email address'
+          });
+        }
+
+        const emailExists = await User.findOne({
+          email: trimmedEmail,
+          _id: { $ne: user._id }
+        });
+        if (emailExists) {
+          return res.status(400).json({
+            message: 'Email address is already in use by another account'
+          });
+        }
+        user.email = trimmedEmail;
+      } else {
+        user.email = undefined;
+      }
+    }
+
+    if (occupation !== undefined) {
       const valid = ['construction', 'farmer', 'delivery', 'vendor', 'other'];
       if (valid.includes(occupation.toLowerCase().trim())) {
         user.occupation = occupation.toLowerCase().trim();
@@ -219,7 +281,7 @@ const updateMe = async (req, res) => {
       const trimmedPhone = emergencyContactPhone.trim();
       if (trimmedPhone && !/^[6-9]\d{9}$/.test(trimmedPhone)) {
         return res.status(400).json({
-          message: 'Emergency contact phone must be a valid 10-digit Indian mobile number'
+          message: 'Emergency contact phone must be a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9'
         });
       }
       user.emergencyContactPhone = trimmedPhone;
@@ -232,6 +294,10 @@ const updateMe = async (req, res) => {
       }
     }
 
+    if (profilePhoto !== undefined) {
+      user.profilePhoto = profilePhoto || '';
+    }
+
     await user.save();
 
     res.json({
@@ -239,13 +305,15 @@ const updateMe = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
+        email: user.email || '',
         phone: user.phone,
         role: user.role,
-        occupation: user.occupation,
-        location: user.location,
-        emergencyContactName: user.emergencyContactName,
-        emergencyContactPhone: user.emergencyContactPhone,
-        language: user.language
+        occupation: user.occupation || 'other',
+        location: user.location || '',
+        emergencyContactName: user.emergencyContactName || '',
+        emergencyContactPhone: user.emergencyContactPhone || '',
+        language: user.language || 'en',
+        profilePhoto: user.profilePhoto || ''
       }
     });
   } catch (error) {
