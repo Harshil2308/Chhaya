@@ -5,6 +5,7 @@ import UserDashboard from './pages/UserDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
 import FirstAid from './pages/FirstAid';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/manager" element={<ManagerDashboard />} />
         <Route path="/first-aid" element={<FirstAid />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </BrowserRouter>
   );
