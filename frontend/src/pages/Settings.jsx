@@ -7,22 +7,29 @@ import { useLanguage } from '../context/LanguageContext';
 
 const Spinner = () => <span className="spinner mr-2" />;
 
-// Helper to resize image using canvas to keep base64 payload ~50-80KB
-function resizeImage(source, maxWidth = 400, quality = 0.85) {
+// Helper to resize & center-crop image to 400x400 square JPEG (~30-50KB)
+function resizeImage(source, targetSize = 400, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const scale = Math.min(1, maxWidth / img.width);
-      const width = Math.round(img.width * scale);
-      const height = Math.round(img.height * scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, width, height);
-      resolve(canvas.toDataURL('image/jpeg', quality));
+      try {
+        const minDim = Math.min(img.width, img.height);
+        const startX = (img.width - minDim) / 2;
+        const startY = (img.height - minDim) / 2;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = targetSize;
+        canvas.height = targetSize;
+        const ctx = canvas.getContext('2d');
+
+        // Draw centered square crop for perfect avatar circle
+        ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, targetSize, targetSize);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch (err) {
+        reject(err);
+      }
     };
-    img.onerror = reject;
+    img.onerror = () => reject(new Error('Image failed to load'));
 
     if (typeof source === 'string') {
       img.src = source;
@@ -31,7 +38,7 @@ function resizeImage(source, maxWidth = 400, quality = 0.85) {
       reader.onload = (e) => {
         img.src = e.target.result;
       };
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error('File reading failed'));
       reader.readAsDataURL(source);
     }
   });
@@ -57,6 +64,7 @@ function Settings() {
 
   const [initialLoading, setInitialLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null); // { type: 'success' | 'error', text: '' }
 
   // Camera modal state
@@ -64,15 +72,96 @@ function Settings() {
   const [cameraError, setCameraError] = useState('');
   const [cameraStream, setCameraStream] = useState(null);
 
-  // Password modal / expansion
-  const [showPasswordNotice, setShowPasswordNotice] = useState(false);
+  // Password change state
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordStatus, setPasswordStatus] = useState(null); // { type: 'success' | 'error', text: '' }
+
+  const evaluatePassword = (pwd) => ({
+    length: (pwd || '').length >= 8,
+    upper: /[A-Z]/.test(pwd || ''),
+    lower: /[a-z]/.test(pwd || ''),
+    number: /[0-9]/.test(pwd || ''),
+    special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?`~]/.test(pwd || ''),
+  });
+
+  const isPasswordSecure = (pwd) => {
+    const c = evaluatePassword(pwd);
+    return c.length && c.upper && c.lower && c.number && c.special;
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordStatus(null);
+
+    const { currentPassword, newPassword, confirmPassword } = passwordData;
+
+    if (!currentPassword.trim() || !newPassword || !confirmPassword) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'All three password fields are required.'
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'New Password and Confirm New Password do not match.'
+      });
+      return;
+    }
+
+    if (!isPasswordSecure(newPassword)) {
+      setPasswordStatus({
+        type: 'error',
+        text: 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+      });
+      return;
+    }
+
+    setChangingPassword(true);
+
+    try {
+      const res = await API.put('/auth/change-password', {
+        oldPassword: currentPassword,
+        newPassword: newPassword,
+      });
+
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+
+      setPasswordStatus({
+        type: 'success',
+        text: res.data?.message || 'Password changed successfully!'
+      });
+    } catch (err) {
+      setPasswordStatus({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to change password. Please try again.'
+      });
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const videoRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Authenticate & load current profile data
+  // Authenticate & load current profile data once on mount
   useEffect(() => {
-    const storedToken = token || localStorage.getItem('token');
+    const storedToken = localStorage.getItem('token');
     const storedUserStr = localStorage.getItem('user');
 
     if (!storedToken || !storedUserStr) {
@@ -81,8 +170,9 @@ function Settings() {
     }
 
     try {
-      const parsedUser = user || JSON.parse(storedUserStr);
-      setFormData({
+      const parsedUser = JSON.parse(storedUserStr);
+      setFormData((prev) => ({
+        ...prev,
         name: parsedUser.name || '',
         email: parsedUser.email || '',
         phone: parsedUser.phone || '',
@@ -93,18 +183,19 @@ function Settings() {
         occupation: parsedUser.occupation || 'other',
         profilePhoto: parsedUser.profilePhoto || '',
         role: parsedUser.role || 'worker'
-      });
+      }));
     } catch (e) {
       navigate('/login');
       return;
     }
 
-    // Fetch fresh profile from backend
+    // Fetch fresh profile from backend once on mount
     API.get('/auth/me')
       .then((res) => {
         if (res.data) {
           const u = res.data;
-          setFormData({
+          setFormData((prev) => ({
+            ...prev,
             name: u.name || '',
             email: u.email || '',
             phone: u.phone || '',
@@ -115,7 +206,7 @@ function Settings() {
             occupation: u.occupation || 'other',
             profilePhoto: u.profilePhoto || '',
             role: u.role || 'worker'
-          });
+          }));
           if (updateUser) {
             updateUser(u);
           } else {
@@ -129,7 +220,7 @@ function Settings() {
       .finally(() => {
         setInitialLoading(false);
       });
-  }, [navigate, token, user, updateUser]);
+  }, []); // Run ONLY once on mount to avoid infinite fetch loop
 
   // Clean up camera stream when cameraActive turns false or component unmounts
   useEffect(() => {
@@ -192,51 +283,118 @@ function Settings() {
     setCameraError('');
   };
 
-  // Capture frame from video stream
-  const handleCapturePhoto = () => {
-    if (!videoRef.current) return;
+  // Immediately uploads profile photo to backend and keeps app state in sync
+  const uploadProfilePhoto = async (photoDataUrl) => {
+    setPhotoUploading(true);
+    setStatusMessage(null);
 
-    const video = videoRef.current;
-    const canvas = document.createElement('canvas');
-    const size = Math.min(video.videoWidth || 400, video.videoHeight || 400);
-
-    // Square crop for avatar
-    canvas.width = 400;
-    canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-
-    const startX = ((video.videoWidth || 400) - size) / 2;
-    const startY = ((video.videoHeight || 400) - size) / 2;
-
-    ctx.drawImage(video, startX, startY, size, size, 0, 0, 400, 400);
-    const photoDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
+    // Optimistically update local form state so preview updates immediately
     setFormData((prev) => ({ ...prev, profilePhoto: photoDataUrl }));
-    handleStopCamera();
+
+    try {
+      const res = await API.put('/auth/me', { profilePhoto: photoDataUrl });
+      const updatedUser = res.data?.user;
+
+      if (updatedUser) {
+        if (updateUser) {
+          updateUser(updatedUser);
+        } else if (authLogin) {
+          authLogin(updatedUser, localStorage.getItem('token'));
+        } else {
+          localStorage.setItem('user', JSON.stringify(updatedUser));
+        }
+      }
+
+      window.dispatchEvent(new Event('chhaya-user-loaded'));
+
+      if (photoDataUrl) {
+        setStatusMessage({
+          type: 'success',
+          text: tr('settings.photoUpdated') || 'Profile photo updated successfully!'
+        });
+      } else {
+        // No message printed when removing photo
+        setStatusMessage(null);
+      }
+    } catch (err) {
+      console.error('Failed to update profile photo:', err);
+      // Revert if error
+      const stored = localStorage.getItem('user');
+      if (stored) {
+        try {
+          const prev = JSON.parse(stored);
+          setFormData((f) => ({ ...f, profilePhoto: prev.profilePhoto || '' }));
+        } catch (_) {}
+      }
+      setStatusMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Failed to update profile photo. Please try again.'
+      });
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
-  // Choose from Gallery (file input)
+  // Capture frame from live video stream and upload immediately
+  const handleCapturePhoto = async () => {
+    if (!videoRef.current) return;
+
+    try {
+      const video = videoRef.current;
+      const canvas = document.createElement('canvas');
+      const vw = video.videoWidth || video.clientWidth || 400;
+      const vh = video.videoHeight || video.clientHeight || 400;
+      const size = Math.min(vw, vh);
+
+      canvas.width = 400;
+      canvas.height = 400;
+      const ctx = canvas.getContext('2d');
+
+      const startX = (vw - size) / 2;
+      const startY = (vh - size) / 2;
+
+      // Mirror horizontally to match selfie camera preview
+      ctx.translate(400, 0);
+      ctx.scale(-1, 1);
+      ctx.drawImage(video, startX, startY, size, size, 0, 0, 400, 400);
+
+      const photoDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      handleStopCamera();
+
+      await uploadProfilePhoto(photoDataUrl);
+    } catch (err) {
+      console.error('Camera capture error:', err);
+      handleStopCamera();
+      setStatusMessage({
+        type: 'error',
+        text: 'Failed to capture photo from camera. Please try again.'
+      });
+    }
+  };
+
+  // Choose from Gallery (file input) and upload immediately
   const handleGallerySelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
-      const resized = await resizeImage(file, 400, 0.85);
-      setFormData((prev) => ({ ...prev, profilePhoto: resized }));
+      const resized = await resizeImage(file, 400, 0.82);
+      await uploadProfilePhoto(resized);
     } catch (err) {
       console.error('Failed to process selected image:', err);
       setStatusMessage({
         type: 'error',
-        text: 'Failed to process selected image. Please try another file.'
+        text: 'Failed to process selected image. Please try another image file.'
       });
     } finally {
       e.target.value = '';
     }
   };
 
-  // Remove photo
-  const handleRemovePhoto = () => {
-    setFormData((prev) => ({ ...prev, profilePhoto: '' }));
+  // Remove photo and update immediately without printing any message
+  const handleRemovePhoto = async () => {
+    setStatusMessage(null);
+    await uploadProfilePhoto('');
   };
 
   // Generic form field handler
@@ -486,14 +644,29 @@ function Settings() {
                       {formData.name?.charAt(0)?.toUpperCase() || 'U'}
                     </div>
                   )}
+
+                  {/* Uploading loading overlay */}
+                  {photoUploading && (
+                    <div className="absolute inset-0 rounded-full bg-black/65 flex flex-col items-center justify-center text-white text-xs font-bold backdrop-blur-2xs shadow-inner">
+                      <span className="spinner mb-1" />
+                      <span className="text-[10px] uppercase tracking-wider text-orange-200">Updating...</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex-1 text-center sm:text-left">
-                  <h3 className="text-base font-bold text-gray-900 mb-1">
-                    {formData.name || 'Your Profile Picture'}
-                  </h3>
+                  <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                    <h3 className="text-base font-bold text-gray-900">
+                      {formData.name || 'Your Profile Picture'}
+                    </h3>
+                    {photoUploading && (
+                      <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full animate-pulse">
+                        Uploading...
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500 mb-3.5">
-                    Take a live camera photo or upload an image file from your device.
+                    Take a live camera photo or upload an image file. Updates immediately to your profile!
                   </p>
 
                   {/* Photo Actions */}
@@ -502,8 +675,9 @@ function Settings() {
                     <button
                       type="button"
                       id="settings-take-photo-btn"
+                      disabled={photoUploading}
                       onClick={handleStartCamera}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-orange-700 border border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-orange-700 border border-orange-300 hover:bg-orange-50 hover:border-orange-400 transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
                     >
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
@@ -516,15 +690,16 @@ function Settings() {
                     <button
                       type="button"
                       id="settings-gallery-btn"
+                      disabled={photoUploading}
                       onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all shadow-2xs cursor-pointer active:scale-95"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50"
                     >
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                         <circle cx="8.5" cy="8.5" r="1.5"/>
                         <polyline points="21 15 16 10 5 21"/>
                       </svg>
-                      <span>{tr('settings.chooseGallery')}</span>
+                      <span>{photoUploading ? 'Uploading...' : tr('settings.chooseGallery')}</span>
                     </button>
 
                     {/* Hidden file input */}
@@ -541,8 +716,9 @@ function Settings() {
                       <button
                         type="button"
                         id="settings-remove-photo-btn"
+                        disabled={photoUploading}
                         onClick={handleRemovePhoto}
-                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 bg-red-50/80 border border-red-200 hover:bg-red-100 transition-all cursor-pointer active:scale-95"
+                        className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-semibold text-red-600 bg-red-50/80 border border-red-200 hover:bg-red-100 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6"/>
@@ -855,24 +1031,203 @@ function Settings() {
                 <button
                   type="button"
                   id="settings-change-password-btn"
-                  onClick={() => setShowPasswordNotice(!showPasswordNotice)}
-                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-orange-200 bg-white text-orange-800 hover:bg-orange-50 hover:border-orange-300 transition-all shadow-2xs cursor-pointer"
+                  onClick={() => {
+                    setShowPasswordForm(!showPasswordForm);
+                    setPasswordStatus(null);
+                  }}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border border-orange-200 bg-white text-orange-800 hover:bg-orange-50 hover:border-orange-300 transition-all shadow-2xs cursor-pointer active:scale-98"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 2l-2 2m-1.5 1.5L4 19l-2 3 3-2 13.5-13.5M16 5l3 3"/>
                   </svg>
-                  <span>{tr('settings.changePassword')}</span>
+                  <span>{showPasswordForm ? 'Close Form ✕' : (tr('settings.changePassword') || 'Change Password')}</span>
                 </button>
               </div>
 
-              {/* Notice modal / expandable alert */}
-              {showPasswordNotice && (
-                <div className="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1.5 animate-fadeIn">
-                  <div className="flex items-center gap-2 font-bold text-amber-800">
-                    <span>ℹ️</span>
-                    <span>{tr('settings.changePassword')}</span>
+              {/* Expandable Change Password Form */}
+              {showPasswordForm && (
+                <div className="mt-5 p-5 sm:p-6 rounded-2xl bg-white border border-orange-200 shadow-xs animate-fadeIn">
+                  <div className="border-b border-orange-100 pb-3 mb-4">
+                    <h3 className="text-sm font-bold text-gray-900">
+                      {tr('settings.changePassword') || 'Change Password'}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Enter your current password and choose a strong new password.
+                    </p>
                   </div>
-                  <p>{tr('settings.changePasswordNotice')}</p>
+
+                  {/* Password Status Alert */}
+                  {passwordStatus && (
+                    <div
+                      className={`alert mb-4 shadow-xs ${
+                        passwordStatus.type === 'success' ? 'alert-success' : 'alert-error'
+                      }`}
+                    >
+                      <span>{passwordStatus.type === 'success' ? '✅' : '⚠️'}</span>
+                      <span>{passwordStatus.text}</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    {/* Current Password */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        Current Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          name="currentPassword"
+                          value={passwordData.currentPassword}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))
+                          }
+                          placeholder="••••••••"
+                          className="chhaya-input bg-white pr-10"
+                          required
+                          autoComplete="current-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1"
+                          title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showCurrentPassword ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* New Password */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        New Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showNewPassword ? 'text' : 'password'}
+                          name="newPassword"
+                          value={passwordData.newPassword}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))
+                          }
+                          placeholder="••••••••"
+                          className="chhaya-input bg-white pr-10"
+                          required
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1"
+                          title={showNewPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showNewPassword ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+
+                      {/* Password requirements hint checklist */}
+                      {passwordData.newPassword && (
+                        <div className="mt-2.5 p-3 rounded-xl bg-orange-50/70 border border-orange-100 text-[11px] space-y-1">
+                          <p className="font-bold text-gray-700 mb-1">Password Requirements:</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                            {(() => {
+                              const crit = evaluatePassword(passwordData.newPassword);
+                              return (
+                                <>
+                                  <span className={`flex items-center gap-1.5 ${crit.length ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.length ? '✓' : '○'}</span> At least 8 characters
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.upper ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.upper ? '✓' : '○'}</span> One uppercase letter (A-Z)
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.lower ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.lower ? '✓' : '○'}</span> One lowercase letter (a-z)
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.number ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.number ? '✓' : '○'}</span> One number (0-9)
+                                  </span>
+                                  <span className={`flex items-center gap-1.5 ${crit.special ? 'text-emerald-700 font-semibold' : 'text-gray-500'}`}>
+                                    <span>{crit.special ? '✓' : '○'}</span> One symbol (!@#$%^&*)
+                                  </span>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Confirm New Password */}
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                        Confirm New Password <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          name="confirmPassword"
+                          value={passwordData.confirmPassword}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                          }
+                          placeholder="••••••••"
+                          className="chhaya-input bg-white pr-10"
+                          required
+                          autoComplete="new-password"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-sm cursor-pointer p-1"
+                          title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                        >
+                          {showConfirmPassword ? '🙈' : '👁️'}
+                        </button>
+                      </div>
+                      {passwordData.confirmPassword && (
+                        <p className={`text-[11px] mt-1 font-semibold ${
+                          passwordData.newPassword === passwordData.confirmPassword
+                            ? 'text-emerald-600'
+                            : 'text-red-500'
+                        }`}>
+                          {passwordData.newPassword === passwordData.confirmPassword
+                            ? '✓ Passwords match'
+                            : '✕ Passwords do not match'}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-end gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPasswordForm(false);
+                          setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                          setPasswordStatus(null);
+                        }}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={changingPassword}
+                        className="chhaya-btn-primary w-full sm:w-auto px-6 py-2.5 text-xs font-bold shadow-md disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                      >
+                        {changingPassword ? (
+                          <>
+                            <Spinner />
+                            <span>Updating Password...</span>
+                          </>
+                        ) : (
+                          <span>🔒 Update Password</span>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </div>
               )}
             </div>
@@ -947,11 +1302,12 @@ function Settings() {
                 <button
                   type="button"
                   id="camera-capture-btn"
+                  disabled={photoUploading}
                   onClick={handleCapturePhoto}
-                  className="chhaya-btn-primary px-6 py-2.5 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md"
+                  className="chhaya-btn-primary px-6 py-2.5 text-xs font-bold flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
                 >
                   <span>📸</span>
-                  <span>{tr('settings.capture')}</span>
+                  <span>{photoUploading ? 'Saving...' : tr('settings.capture')}</span>
                 </button>
               )}
             </div>
