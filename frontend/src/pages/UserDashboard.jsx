@@ -39,7 +39,7 @@ const SAFETY_TIPS = [
 ];
 
 // SOSModal receives tr + lang as props to avoid hook rules issues inside conditional render.
-function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
+function SOSModal({ user, onClose, userCoords, tr, JOB_LABELS_T }) {
   // Extract clean 10-digit Indian phone number
   const get10DigitPhone = (raw) => {
     if (!raw) return '';
@@ -60,15 +60,8 @@ function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
   const [mapsLink, setMapsLink] = useState('');
   const [gpsStatus, setGpsStatus] = useState('idle');
 
-  // Sync saved emergency contact phone if loaded asynchronously
-  useEffect(() => {
-    if (savedPhone) {
-      setWhatsappNumber((prev) => prev || savedPhone);
-    }
-  }, [savedPhone]);
-
-  // Initialise initial location text display
-  useEffect(() => {
+  // Helper to get fallback coordinates (from userCoords prop or city database)
+  const getFallbackCoords = () => {
     if (
       userCoords &&
       typeof userCoords.lat === 'number' &&
@@ -76,8 +69,36 @@ function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
       !isNaN(userCoords.lat) &&
       !isNaN(userCoords.lng)
     ) {
-      setMapsLink(`https://maps.google.com/?q=${userCoords.lat},${userCoords.lng}`);
-      setLocationText(`${userCoords.lat.toFixed(5)}, ${userCoords.lng.toFixed(5)}`);
+      return { lat: userCoords.lat, lng: userCoords.lng };
+    }
+    const cityName = user?.city || user?.location || 'Ahmedabad';
+    return getCityCoordinates(cityName);
+  };
+
+  // Sync saved emergency contact phone if loaded asynchronously
+  useEffect(() => {
+    if (savedPhone) {
+      setWhatsappNumber((prev) => prev || savedPhone);
+    }
+  }, [savedPhone]);
+
+  // Initialise initial location text display with guaranteed coordinates
+  useEffect(() => {
+    const coords = getFallbackCoords();
+    if (coords) {
+      setMapsLink(`https://maps.google.com/?q=${coords.lat},${coords.lng}`);
+      const isExactGps =
+        userCoords &&
+        typeof userCoords.lat === 'number' &&
+        typeof userCoords.lng === 'number' &&
+        !isNaN(userCoords.lat) &&
+        !isNaN(userCoords.lng);
+      if (isExactGps) {
+        setLocationText(`${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`);
+      } else {
+        const place = [user?.areaName, user?.city || user?.location].filter(Boolean).join(', ') || 'Ahmedabad';
+        setLocationText(`${place} (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`);
+      }
     } else {
       setLocationText(user?.location || 'Live GPS acquired on send');
     }
@@ -119,17 +140,32 @@ function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
     }
   };
 
-  // Build emergency message text
+  // Build emergency message text with guaranteed Google Maps location link
   const buildWhatsAppMessage = (coords) => {
-    if (
-      coords &&
-      typeof coords.lat === 'number' &&
-      typeof coords.lng === 'number' &&
-      !isNaN(coords.lat) &&
-      !isNaN(coords.lng)
-    ) {
-      return `Emergency! I need help due to extreme heat.\nMy location: https://maps.google.com/?q=${coords.lat},${coords.lng}`;
+    const lat = coords?.lat;
+    const lng = coords?.lng;
+    const hasValidCoords =
+      typeof lat === 'number' &&
+      typeof lng === 'number' &&
+      !isNaN(lat) &&
+      !isNaN(lng);
+
+    const cityName = user?.city || user?.location || '';
+    const areaName = user?.areaName || '';
+    const locationName = [areaName, cityName].filter(Boolean).join(', ');
+
+    if (hasValidCoords) {
+      let msg = `Emergency! I need help due to extreme heat.\nMy location: https://maps.google.com/?q=${lat},${lng}`;
+      if (locationName) {
+        msg += `\nArea: ${locationName}`;
+      }
+      return msg;
     }
+
+    if (locationName) {
+      return `Emergency! I need help due to extreme heat.\nMy location: https://maps.google.com/?q=${encodeURIComponent(locationName)}\nArea: ${locationName}`;
+    }
+
     return `Emergency! I need help due to extreme heat.\nLocation unavailable. Please ask me for live location.`;
   };
 
@@ -152,9 +188,12 @@ function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
     setSent(false);
     setGpsStatus('locating');
 
-    let liveCoords = null;
+    let resolvedCoords = null;
 
-    // Live browser GPS query
+    // Live browser GPS query with multi-tier fallback:
+    // 1. Try high-accuracy live GPS
+    // 2. If it errors or takes longer than 2.2s, fall back to low-accuracy network GPS (WiFi/cellular)
+    // 3. If that also fails, fall back to existing dashboard userCoords or registered city coords
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       try {
         const pos = await new Promise((resolve, reject) => {
@@ -164,7 +203,7 @@ function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
               settled = true;
               reject(new Error('GPS timeout'));
             }
-          }, 3500);
+          }, 3000);
 
           navigator.geolocation.getCurrentPosition(
             (p) => {
@@ -174,44 +213,67 @@ function SOSModal({ user, onClose, userCoords, tr, _JOB_LABELS_T }) {
                 resolve(p);
               }
             },
-            (err) => {
-              if (!settled) {
-                settled = true;
-                clearTimeout(timer);
-                reject(err);
-              }
+            () => {
+              // High accuracy failed or timed out; try network/low accuracy immediately
+              navigator.geolocation.getCurrentPosition(
+                (p2) => {
+                  if (!settled) {
+                    settled = true;
+                    clearTimeout(timer);
+                    resolve(p2);
+                  }
+                },
+                (err2) => {
+                  if (!settled) {
+                    settled = true;
+                    clearTimeout(timer);
+                    reject(err2);
+                  }
+                },
+                { enableHighAccuracy: false, timeout: 2000, maximumAge: 300000 }
+              );
             },
-            { enableHighAccuracy: true, timeout: 3000, maximumAge: 60000 }
+            { enableHighAccuracy: true, timeout: 2200, maximumAge: 60000 }
           );
         });
 
         const lat = pos?.coords?.latitude;
         const lng = pos?.coords?.longitude;
         if (typeof lat === 'number' && !isNaN(lat) && typeof lng === 'number' && !isNaN(lng)) {
-          liveCoords = { lat, lng };
+          resolvedCoords = { lat, lng };
           setGpsStatus('found');
           setMapsLink(`https://maps.google.com/?q=${lat},${lng}`);
           setLocationText(`${lat.toFixed(5)}, ${lng.toFixed(5)}`);
-        } else {
-          setGpsStatus('failed');
         }
       } catch (err) {
-        console.warn('Live GPS acquisition failed or denied:', err?.message || err);
-        setGpsStatus('failed');
+        console.warn('Live GPS acquisition failed or timed out:', err?.message || err);
       }
-    } else {
-      setGpsStatus('failed');
     }
 
-    const messageText = buildWhatsAppMessage(liveCoords);
+    // Tier 2 & 3: Fall back to existing dashboard userCoords or registered city coords
+    if (!resolvedCoords) {
+      resolvedCoords = getFallbackCoords();
+      if (resolvedCoords) {
+        setGpsStatus('fallback');
+        setMapsLink(`https://maps.google.com/?q=${resolvedCoords.lat},${resolvedCoords.lng}`);
+      } else {
+        setGpsStatus('failed');
+      }
+    }
+
+    const messageText = buildWhatsAppMessage(resolvedCoords);
     const encodedMessage = encodeURIComponent(messageText);
     const url = `https://wa.me/91${trimmed}?text=${encodedMessage}`;
 
     setTimeout(() => {
       setSending(false);
       setSent(true);
-      window.open(url, '_blank');
-    }, 300);
+      const opened = window.open(url, '_blank');
+      // If popup blocker blocked the new window, navigate directly so user is never stuck
+      if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+        window.location.href = url;
+      }
+    }, 250);
   };
 
   return (
