@@ -279,7 +279,7 @@ const updateMe = async (req, res) => {
         }
         user.email = trimmedEmail;
       } else {
-        user.email = '';
+        user.email = undefined;
       }
     }
 

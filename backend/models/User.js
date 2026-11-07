@@ -9,8 +9,7 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true,
     lowercase: true,
-    sparse: true,
-    unique: true
+    set: (v) => (v && typeof v === 'string' && v.trim() ? v.trim().toLowerCase() : undefined)
   },
   phone: {
     type: String,
@@ -23,7 +22,7 @@ const userSchema = new mongoose.Schema({
   },
   profilePhoto: {
     type: String,
-    default: ''
+    default: '' // base64 data URL or empty string
   },
   role: {
     type: String,
@@ -81,21 +80,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['en', 'hi', 'gu'],
     default: 'en'
-  },
-  // ── Profile extras ────────────────────────────────────────────────────────
-  email: {
-    type: String,
-    default: '',
-    lowercase: true,
-    trim: true,
-    sparse: true   // sparse index so empty strings don't conflict
-  },
-  profilePhoto: {
-    type: String,
-    default: ''   // base64 data URL or empty string
   }
 }, {
   timestamps: true
 });
+
+// Partial unique index: only enforces uniqueness for non-empty string emails.
+// Omits null, undefined, and empty strings so accounts without emails never conflict.
+userSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { email: { $type: 'string', $gt: '' } }
+  }
+);
 
 module.exports = mongoose.model('User', userSchema);
