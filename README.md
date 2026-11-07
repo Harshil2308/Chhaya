@@ -1,451 +1,389 @@
-# ☀️ Chhaya (छाया) - Heatwave Early Warning & Heat-Safety System
+# Chhaya (छाया) — Heatwave Early Warning & Heat-Safety System
 
-> **A real-time heatwave early warning, risk advisory, and heat-safety web platform built for India's outdoor workforce — construction laborers, farmers, delivery partners, and street vendors — who must work through extreme heat.**
-
----
-
-## 📌 Table of Contents
-1. [Project Overview](#-project-overview)
-2. [Key Features](#-key-features)
-3. [Role-Based Portals](#-role-based-portals)
-4. [Tech Stack & Dependencies](#-tech-stack--dependencies)
-5. [Folder Structure](#-folder-structure)
-6. [Environment Setup (`.env`)](#-environment-setup-env)
-7. [Installation & Getting Started](#-installation--getting-started)
-8. [Running the Application](#-running-the-application)
-9. [API Endpoint Reference](#-api-endpoint-reference)
-10. [Git & Collaboration Best Practices](#-git--collaboration-best-practices)
-11. [Troubleshooting & FAQ](#-troubleshooting--faq)
+Built for India's outdoor workers — construction laborers, farmers, delivery partners, street vendors — who can't just step inside when it gets too hot. Chhaya gives them real-time heat risk alerts, cooling center maps, and emergency SOS, in their own language.
 
 ---
 
-## 🚀 Project Overview
-
-Extreme heat events and heatwaves in India present severe occupational hazards for millions of unorganized and daily-wage outdoor workers. Unlike indoor office workers, they cannot simply avoid the sun during peak hours.
-
-**Chhaya (छाया)** bridges this gap by translating real-time meteorological conditions into practical, life-saving safety guidance:
-- Evaluates real-feel danger using the **Heat Index** (combining ambient temperature and relative humidity).
-- Delivers **occupation-tailored work-rest cycles and hydration reminders** (e.g., construction workers carrying heavy loads vs. delivery personnel on two-wheelers).
-- Provides an **interactive map of nearby verified cooling centers, shaded rest areas, and drinking water points** with direct navigation.
-- Features an **emergency SOS response system** with 108 emergency calling, a dedicated national heat helpline, and instant WhatsApp location dispatch.
-- Accommodates language and literacy barriers through **multilingual support (English, हिन्दी, ગુજરાતી)** and **high-fidelity voice read-aloud via Sarvam AI (`bulbul:v3`)**.
-- Offers a dedicated **Manager Dashboard** for site supervisors to enforce safety protocols and monitor worker hydration in real time.
-- Delivers a unified **Profile Settings & Security portal** supporting live device camera captures, avatar compression, contact customization, and in-app password changes.
-
----
-
-## ✨ Key Features
-
-### 🌡️ 1. Live Heat-Risk Alerts (Heat Index Based)
-* Calculates real-feel temperature and heat danger levels (**Low**, **Moderate**, **High**, **Very High**, **Extreme**) using live weather data from OpenWeatherMap.
-* Automatically defaults to key urban centers (e.g., Ahmedabad) with offline fallbacks so the UI remains reliable under network constraints.
-
-### 🛡️ 2. Occupation-Tailored Safety Guidance
-* Workers select their trade (**Construction**, **Farmer**, **Delivery Partner**, **Street Vendor**, or **Other**).
-* Safety advisories dynamically adjust to physical exertion levels: personalized hydration schedules, required rest intervals per working hour, and clothing recommendations.
-
-### ⏰ 3. Safe Shift Planner (24-Hour Forecast)
-* Visualizes the upcoming 24-hour weather timeline broken down into 3-hour windows.
-* Flags hazardous afternoon peak heat hours (11:00 AM – 4:00 PM) and recommends safe morning and evening work windows.
-
-### 📍 4. Nearby Cooling Centers & Interactive Map
-* Built with Leaflet to display verified cooling facilities, government shelters, shaded pavilions, and public drinking water points.
-* Uses the Haversine formula to compute exact distance from the worker's device to each shelter.
-* One-click Google Maps direction links for fast navigation.
-
-### 🚨 5. Crowdsourced Hotspot Reporting
-* Field workers and supervisors can report hazardous heat spots, unshaded worksites, or drinking water shortages directly on the map.
-* Admin dashboard allows reviewing, verifying, and updating hotspot statuses (**Pending**, **Verified**, **Resolved**).
-
-### 🆘 6. Emergency SOS (108 + Heat Helpline + WhatsApp Dispatch)
-* One-tap direct dialer to India's National Ambulance Service (`tel:108`).
-* Instant dialer to the National Heat Helpline (`1800-180-1104`).
-* Instant WhatsApp SOS trigger sending live GPS coordinates and emergency distress messages to registered contacts.
-
-### ⚙️ 7. Unified Profile Settings & Live Camera Avatar Capture
-* Dedicated `/settings` portal available across all roles (**Worker**, **Manager**, **Admin**).
-* **Live WebRTC Camera Capture:** Prompts for camera permission, displays real-time video preview with a circular alignment guide, enables front/rear camera flipping, and captures centered square avatars.
-* **Client-Side Compression:** Canvas helper compresses uploaded and captured images to lightweight JPEG data URLs (~40–80KB) to ensure rapid loading and database efficiency.
-* **Role-Adaptive Fields:** Shows "Occupation / Work Sector" strictly for Workers while cleanly hiding it for Managers and Admins.
-* **Contact & Identifier Management:** Updatable name, optional email with uniqueness validation, verified 10-digit login mobile number, location, preferred language, and SOS emergency contact.
-
-### 🔒 8. In-App Security & Change Password
-* Embedded collapsible **Change Password** workflow directly inside the Settings page.
-* Full bcrypt cryptographic verification of current password before permitting updates.
-* Live password criteria checklist enforcing 8+ characters, uppercase, lowercase, numbers, and symbols.
-* Immediate feedback with backend error propagation and session preservation upon successful password changes.
-
-### 🩹 9. First-Aid Heat Illness Guide
-* Rapid, illustrated guidance for identifying symptoms and taking first-aid actions for:
-  * Heat Stroke (Emergency medical protocol)
-  * Heat Exhaustion
-  * Heat Cramps
-  * Heat Rash
-  * Dehydration
-
-### 🗣️ 10. Multilingual Support & Sarvam AI Voice Read-Aloud
-* Full UI static localization across 3 languages: **English**, **Hindi (हिन्दी)**, and **Gujarati (ગુજરાતી)**.
-* Integrated Indian-language TTS powered by Sarvam AI (`bulbul:v3`, speaker `ritu`) with automated Indic translation, in-memory MD5 caching, and native browser SpeechSynthesis fallback for low-literacy workers.
-* AI conversational heat-safety assistant powered by Sarvam AI (`sarvam-105b-conversations`) with rate limiting and emergency phrase interception.
+## Table of Contents
+1. [What is this?](#what-is-this)
+2. [Features](#features)
+3. [Who uses it](#who-uses-it)
+4. [Tech stack](#tech-stack)
+5. [Folder structure](#folder-structure)
+6. [Environment setup](#environment-setup)
+7. [Installation](#installation)
+8. [Running locally](#running-locally)
+9. [API reference](#api-reference)
+10. [Database scripts](#database-scripts)
+11. [Git notes](#git-notes)
+12. [Troubleshooting](#troubleshooting)
 
 ---
 
-## 👥 Role-Based Portals
+## What is this?
 
-Chhaya provides specialized interfaces customized for each user role:
+India sees severe heatwaves every summer, and the people most at risk are daily-wage workers who have no choice but to be outdoors. Chhaya tries to bridge that gap.
 
-| Role | Route | Key Capabilities |
-| :--- | :--- | :--- |
-| **Worker** | `/dashboard` | Personalized heat index, shift planner, cooling center map with distances, hotspot reporting, team hydration check-in, and emergency SOS dispatch. |
-| **Manager** | `/manager` | Worksite heat conditions overview, 6-step interactive worksite safety checklist, shift planning, cooling center navigation, heat hotspot oversight, and quick emergency actions. |
-| **Admin** | `/admin` | Administrative management: add/delete verified cooling centers, verify or resolve worker-reported hotspots, and audit safety alerts. |
-| **All Roles** | `/settings` | Profile customization, live camera photo capture, gallery upload, contact preferences, and secure password updates. |
+It pulls live weather data, calculates the actual heat index (not just temperature — humidity matters a lot), and translates that into practical advice: when to take breaks, how much water to drink, nearest place to cool down. Workers can also trigger an SOS that sends their GPS location over WhatsApp to their emergency contact.
 
-### 👤 Demo & Seeded Accounts
+The app supports Hindi, Gujarati, and English, and has a voice read-aloud feature for workers who may not read well.
 
-| Role | Phone | Password | Target Portal | Notes |
-| :--- | :--- | :--- | :--- | :--- |
-| **Admin** | `9876504321` | `Admin@123` | `/admin` | Fixed controlled admin account. Seed with `npm run seed:admin` |
-| **Manager** | `9876501234` | `Manager@123` | `/manager` | Fixed controlled manager account. Seed with `npm run seed:manager` |
-| **Worker** | *Any valid 10-digit* | User-chosen | `/dashboard` | Self-register on `/register` (public registration is restricted to worker) |
+Currently scoped to **Gujarat** — city and area selection is validated against a curated list so managers can correctly filter their teams by location.
 
 ---
 
-## 🛠 Tech Stack & Dependencies
+## Features
 
-### **Frontend (`/frontend`)**
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **React** | `^19.2.8` | Component-based UI framework |
-| **Vite** | `^8.2.0` | Frontend build tool and rapid development server |
-| **React Router DOM** | `^7.18.2` | Client-side routing (`/login`, `/register`, `/dashboard`, `/manager`, `/admin`, `/first-aid`, `/settings`) |
-| **Leaflet & React-Leaflet** | `^1.9.4` / `^5.0.0` | Interactive mapping for cooling centers and heat hotspots |
-| **Tailwind CSS** | `^4.3.3` | Utility-first CSS styling (via `@tailwindcss/vite`) |
-| **Axios** | `^1.19.0` | HTTP client for backend REST API requests with Bearer token interceptor |
-| **WebRTC MediaDevices API** | Browser Native | Live camera stream access (`getUserMedia`) for profile photo capture |
-| **HTML5 Canvas API** | Browser Native | Dynamic image scaling & compression to lightweight Base64 data URLs |
-| **Oxlint** | `^1.75.0` | Ultra-fast linter for JavaScript and JSX code quality |
+**Heat alerts**
+Live heat index from OpenWeatherMap. Risk levels go: Low → Moderate → High → Very High → Extreme. Falls back gracefully if the API is down or the key is missing.
 
-### **Backend (`/backend`)**
-| Package | Version | Purpose |
-| :--- | :--- | :--- |
-| **Express** | `^5.2.1` | REST API application framework for Node.js (configured with 10MB body limits for avatar payloads) |
-| **MongoDB / Mongoose** | `^7.5.0` / `^9.8.1` | Database client and Object Data Modeling (ODM) |
-| **JSONWebToken (`jsonwebtoken`)** | `^9.0.3` | Role-based token authentication & route protection |
-| **BcryptJS (`bcryptjs`)** | `^3.0.3` | Password hashing for secure user registration, login, and change-password verification |
-| **Dotenv (`dotenv`)** | `^17.4.2` | Environment variable management |
-| **Cors (`cors`)** | `^2.8.6` | Cross-Origin Resource Sharing middleware |
-| **Express Rate Limit** | `^8.7.1` | API rate limiting (protects TTS and AI assistant endpoints) |
-| **Sarvam AI SDK (`sarvamai`)** | `^1.1.11` | Indian-language TTS (`bulbul:v3`) and conversational AI assistant |
-| **Nodemon (`nodemon`)** | `^3.1.14` | Hot-reload development server |
+**Occupation-based advice**
+A construction worker carrying bricks in direct sun needs different rest cycles than a delivery partner on a two-wheeler. Workers pick their occupation on signup and the safety tips adjust accordingly.
+
+**24-hour shift planner**
+Shows the next 24 hours in 3-hour blocks. Marks the dangerous window (roughly 11 AM–4 PM) and suggests when it's safer to do heavy work.
+
+**Cooling center map**
+Leaflet map showing nearby verified cooling shelters, government rest points, and water stations. Uses Haversine to show real distance from your location. Tap to open directions in Google Maps.
+
+**Hotspot reporting**
+Workers or managers can pin a hazardous spot on the map — an unshaded worksite, a water point that's dried up, etc. Admins review and mark them Verified or Resolved.
+
+**Emergency SOS**
+One tap calls 108 (national ambulance). Another dials the heat helpline (1800-180-1104). There's also a WhatsApp button that pre-fills a distress message with the worker's GPS coordinates and sends it to their saved emergency contact.
+
+**Settings & profile**
+Photo upload with live camera capture (WebRTC). Images are compressed client-side using Canvas before saving. Workers can update their city/area, emergency contact, language, email, and password from one place.
+
+**Password security**
+On both registration and the settings page, there's a live strength bar and checklist (8+ chars, uppercase, lowercase, number, special char). The backend enforces the same rules, and there's a same-password guard so you can't "change" to what you already have.
+
+**Multilingual + voice**
+Full UI in English, हिन्दी, ગુજરાતી. Sarvam AI (`bulbul:v3`) handles TTS with a natural Indian accent. If `SARVAM_API_KEY` isn't set, it falls back to the browser's built-in speech synthesis.
+
+**AI heat assistant**
+A conversational assistant (Sarvam `sarvam-105b-conversations`) that answers heat safety questions. Rate-limited to 15 requests/hr and watches for emergency phrases to intercept and redirect.
+
+**Gujarat location validation**
+Both the frontend and backend validate that the selected city and area exist in our `gujaratData` list. The area dropdown doesn't even show until a city is picked. This keeps the data clean for manager team filtering.
 
 ---
 
-## 📂 Folder Structure
+## Who uses it
+
+| Role | Where they go | What they can do |
+|---|---|---|
+| Worker | `/dashboard` | Heat alerts, shift planner, cooling map, check-in, SOS |
+| Manager | `/manager` | Worksite overview, safety checklist, team check-in board |
+| Admin | `/admin` | Add/remove cooling centers, verify/resolve hotspots |
+| Everyone | `/settings` | Edit profile, change photo, update password |
+
+### Demo accounts
+
+| Role | Phone | Password |
+|---|---|---|
+| Admin | `9876504321` | `Admin@123` |
+| Manager | `9876501234` | `Manager@123` |
+| Worker | register yourself at `/register` | whatever you set |
+
+Public registration is locked to the **worker** role only. Manager and Admin accounts have to be seeded manually (see below).
+
+---
+
+## Tech stack
+
+**Frontend**
+- React 19 + Vite
+- React Router DOM v7
+- Tailwind CSS v4
+- Leaflet / React-Leaflet (map)
+- Axios (API calls, with Bearer token interceptor)
+- Browser WebRTC + Canvas (camera capture & image compression)
+
+**Backend**
+- Node.js + Express v5
+- MongoDB + Mongoose
+- JWT for auth
+- bcryptjs for password hashing
+- express-rate-limit on the AI/TTS endpoints
+- Sarvam AI SDK for voice and assistant
+- nodemon in dev
+
+---
+
+## Folder structure
 
 ```
 Chhaya/
-├── package.json              # Root workspace convenience scripts
-├── README.md                 # Project documentation
-├── setup.bat                 # Windows automated 1-click setup script
-├── setup.sh                  # macOS/Linux automated setup script
-├── requirements.txt          # Dependency reference manifest
-├── .gitignore                # Root Git ignore rules (blocks .env, node_modules)
+├── package.json              # root scripts (install:all, dev:backend, dev:frontend)
+├── setup.bat / setup.sh      # one-click setup for Windows / Mac+Linux
+├── requirements.txt
 │
-├── backend/                  # Node.js + Express API Server
-│   ├── config/
-│   │   └── db.js             # MongoDB connection logic (Local & Atlas)
-│   ├── controllers/          # Business logic handlers
+├── backend/
+│   ├── config/db.js
+│   ├── controllers/
+│   │   ├── authController.js       # register, login, updateMe, changePassword, getMe
 │   │   ├── alertController.js
 │   │   ├── assistantController.js
-│   │   ├── authController.js # Auth, Profile, and Password Change controllers
 │   │   ├── checkInController.js
 │   │   ├── coolingCenterController.js
 │   │   ├── hotspotController.js
+│   │   ├── managerController.js
 │   │   └── teamController.js
-│   ├── middleware/           # Auth (protect, manager, admin) & rate limiting
-│   ├── models/               # Mongoose schemas (User, CoolingCenter, Hotspot, Team, CheckIn)
-│   ├── routes/               # API endpoint definitions
+│   ├── middleware/                 # protect, requireManager, requireAdmin
+│   ├── models/                    # User, CoolingCenter, Hotspot, Team, CheckIn
+│   ├── routes/
+│   │   ├── authRoutes.js          # /register /login /me /change-password
 │   │   ├── alertRoutes.js
 │   │   ├── assistantRoutes.js
-│   │   ├── authRoutes.js     # /register, /login, /me, /change-password
 │   │   ├── checkInRoutes.js
 │   │   ├── coolingCenterRoutes.js
 │   │   ├── hotspotRoutes.js
+│   │   ├── managerRoutes.js
 │   │   ├── speakRoutes.js
 │   │   └── teamRoutes.js
-│   ├── utils/                # Helper utilities (heatIndex, personalRisk, sarvamClient, emergencyCheck)
-│   ├── .env                  # Backend environment secrets (NEVER commit to Git)
-│   ├── .env.example          # Environment variables template
-│   ├── .gitignore            # Backend Git ignore rules
-│   ├── package.json          # Backend dependencies & npm scripts
-│   └── server.js             # Express entry point
+│   ├── scripts/
+│   │   ├── seedAdmin.js
+│   │   ├── seedManager.js
+│   │   └── fixEmailIndex.js       # run once to migrate email index (see below)
+│   ├── utils/                     # heatIndex, personalRisk, gujaratData, sarvamClient, emergencyCheck
+│   ├── .env                       # never commit this
+│   ├── .env.example
+│   └── server.js
 │
-└── frontend/                 # React 19 + Vite Application
-    ├── public/               # Public static assets
-    ├── src/
-    │   ├── assets/           # Project imagery & vector icons
-    │   ├── components/       # Reusable components (Navbar, HeatHelper, MapView, SunPanel, SafeShiftPlanner, etc.)
-    │   ├── context/          # React context providers (AuthContext, LanguageContext)
-    │   ├── locales/          # Static translations (English, Hindi, Gujarati)
-    │   ├── pages/            # Views (Login, Register, UserDashboard, ManagerDashboard, AdminDashboard, FirstAid, Settings)
-    │   ├── services/         # Axios instance (API) and endpoint call abstractions
-    │   ├── utils/            # Helper functions (geoDistance, personalizedRisk)
-    │   ├── App.jsx           # Top-level client routing including /settings
-    │   └── main.jsx          # React DOM mounting entry point
-    ├── .gitignore            # Frontend Git ignore rules
-    ├── index.html            # HTML document template
-    ├── package.json          # Frontend dependencies & npm scripts
-    └── vite.config.js        # Vite bundler configuration
+└── frontend/
+    ├── public/
+    └── src/
+        ├── components/            # Navbar, MapView, SunPanel, HeatHelper, SafeShiftPlanner, ...
+        ├── context/               # AuthContext, LanguageContext
+        ├── locales/               # en, hi, gu translation files
+        ├── pages/                 # Login, Register, UserDashboard, ManagerDashboard, AdminDashboard, FirstAid, Settings
+        ├── services/              # Axios instance + API helpers
+        ├── utils/                 # geoDistance, gujaratData, personalizedRisk
+        ├── App.jsx
+        └── main.jsx
 ```
 
 ---
 
-## 🔑 Environment Setup (`.env`)
+## Environment setup
 
-The backend requires a configuration file located at `backend/.env`.
+Create `backend/.env` by copying the example:
 
-1. Copy the example template into a real `.env` file:
-   ```powershell
-   # Windows PowerShell
-   copy backend\.env.example backend\.env
-
-   # macOS / Linux / Git Bash
-   cp backend/.env.example backend/.env
-   ```
-
-2. Open `backend/.env` and configure your environment variables:
-
-   ```env
-   PORT=5000
-
-   # Option A: Local MongoDB (default)
-   MONGO_URI=mongodb://127.0.0.1:27017/chhaya
-
-   # Option B: MongoDB Atlas
-   # MONGO_URI=mongodb+srv://<USER>:<PASSWORD>@<CLUSTER>.mongodb.net/chhaya?retryWrites=true&w=majority
-
-   # JWT secret for token signing
-   JWT_SECRET=your_super_secret_jwt_key_here
-
-   # OpenWeatherMap API Key (Required for live heat index & forecast)
-   WEATHER_API_KEY=your_openweathermap_api_key_here
-
-   # Sarvam AI API Key (Optional: for native Indian language voice TTS & assistant)
-   SARVAM_API_KEY=your_sarvam_ai_key_here
-   ```
-
-> ⚠️ **CRITICAL SECURITY NOTE:** Never commit `backend/.env` to Git. Both root and backend `.gitignore` files are pre-configured to keep your keys safe.
-
----
-
-## 📥 Installation & Getting Started
-
-### Prerequisites
-* **Node.js** (v18.x or later recommended)
-* **npm** (v9.x or later)
-* **MongoDB** (Local MongoDB Community Server running on port 27017 OR a free MongoDB Atlas cluster)
-
-### 1. Clone the repository
 ```bash
-git clone https://github.com/Harshil2308/Chhaya.git
-cd Chhaya
+# Windows
+copy backend\.env.example backend\.env
+
+# Mac/Linux
+cp backend/.env.example backend/.env
 ```
 
-### 2. Install all dependencies
+Then fill it in:
 
-Choose **any** of the following installation methods:
+```env
+PORT=5000
 
-* **⚡ Option A: Single Command from Root**
-  ```powershell
-  npm run install:all
-  ```
-  *(Runs `npm install` inside both `backend/` and `frontend/` automatically)*
+# local mongo
+MONGO_URI=mongodb://127.0.0.1:27017/chhaya
 
-* **🖱️ Option B: Windows Automated Script**
-  ```powershell
-  .\setup.bat
-  ```
+# or Atlas
+# MONGO_URI=mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/chhaya?retryWrites=true&w=majority
 
-* **🐧 Option C: macOS / Linux / Git Bash Script**
-  ```bash
-  chmod +x setup.sh && ./setup.sh
-  ```
+JWT_SECRET=something_long_and_random
 
-* **🔧 Option D: Manual Step-by-Step**
-  ```bash
-  cd backend && npm install
-  cd ../frontend && npm install
-  ```
+# get a free key at openweathermap.org
+WEATHER_API_KEY=
+
+# optional — app works without it (falls back to browser TTS)
+SARVAM_API_KEY=
+```
+
+Don't commit `.env`. Both `.gitignore` files already block it.
 
 ---
 
-## 🚀 Running the Application
+## Installation
 
-For development, you need both the backend API and frontend Vite server running concurrently:
+Pick whichever way works for you:
 
-### Method 1: Two Separate Terminals (Recommended)
+```bash
+# from project root — installs both backend and frontend
+npm run install:all
 
-* **Terminal 1: Start Backend API**
-  ```powershell
-  cd backend
-  npm run dev
-  ```
-  *Express server will launch on:* `http://localhost:5000`  
-  *Console should confirm:* `MongoDB Connected Successfully`
+# Windows script
+.\setup.bat
 
-* **Terminal 2: Start Frontend Web App**
-  ```powershell
-  cd frontend
-  npm run dev
-  ```
-  *Vite development server will launch on:* `http://localhost:5173`
+# Mac/Linux script
+chmod +x setup.sh && ./setup.sh
+
+# manually
+cd backend && npm install
+cd ../frontend && npm install
+```
 
 ---
 
-### Method 2: From the Root Directory
+## Running locally
 
+You need two terminals — one for the backend, one for the frontend.
+
+```bash
+# terminal 1
+cd backend
+npm run dev
+# → http://localhost:5000
+# → console should say: MongoDB Connected Successfully
+
+# terminal 2
+cd frontend
+npm run dev
+# → http://localhost:5173
+```
+
+Or from the root if you prefer:
+```bash
+npm run dev:backend   # terminal 1
+npm run dev:frontend  # terminal 2
+```
+
+**Seed the manager and admin accounts before logging in with them:**
+
+```bash
+node backend/scripts/seedManager.js   # or: npm run seed:manager
+node backend/scripts/seedAdmin.js     # or: npm run seed:admin
+```
+
+Then open `http://localhost:5173`.
+
+---
+
+## API reference
+
+All routes except `/api/auth/register`, `/api/auth/login`, and `/api/assistant/status` need `Authorization: Bearer <token>`.
+
+### Auth & Profile — `/api/auth`
+
+| Method | Endpoint | Who | Notes |
+|---|---|---|---|
+| POST | `/api/auth/register` | Public | Required: `name`, `phone`, `password`, `city`, `areaName`, `emergencyContactName`, `emergencyContactPhone`, `language`. City + area must be valid Gujarat values. Always creates a `worker`. |
+| POST | `/api/auth/login` | Public | `phone` + `password` → returns JWT + user object |
+| GET | `/api/auth/me` | Authenticated | Returns current user profile |
+| PUT | `/api/auth/me` | Authenticated | Update any profile field. `email` is optional but must be unique if provided. |
+| PUT | `/api/auth/change-password` | Authenticated | `oldPassword` + `newPassword`. Same-password check included. |
+
+### Heat Alerts — `/api/alerts`
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| GET | `/api/alerts?city=&job=` | Current heat index, risk tier, and work-rest advice |
+| GET | `/api/alerts/forecast?city=` | 24-hour forecast in 3-hour blocks with safe windows |
+
+### Cooling Centers — `/api/cooling-centers`
+
+| Method | Endpoint | Who |
+|---|---|---|
+| GET | `/api/cooling-centers` | Authenticated |
+| POST | `/api/cooling-centers` | Admin only |
+| DELETE | `/api/cooling-centers/:id` | Admin only |
+
+### Hotspots — `/api/hotspots`
+
+| Method | Endpoint | Who |
+|---|---|---|
+| GET | `/api/hotspots` | Authenticated |
+| POST | `/api/hotspots` | Authenticated — fields: `title`, `location`, `intensity`, `description` |
+| PUT | `/api/hotspots/:id` | Admin only — set status to `Pending` / `Verified` / `Resolved` |
+
+### Voice & Assistant
+
+| Method | Endpoint | Notes |
+|---|---|---|
+| GET | `/api/assistant/status` | Public — checks if Sarvam key is configured |
+| POST | `/api/assistant` | Authenticated — `message`, `language`, `city`. Rate limited to 15/hr. |
+| POST | `/api/speak` | Authenticated — `text`, `lang` (`en`/`hi`/`gu`). Returns audio via Sarvam TTS. |
+
+### Teams & Check-ins — `/api/teams`, `/api/checkins`
+
+| Method | Endpoint | Who |
+|---|---|---|
+| POST | `/api/teams` | Manager only — create a team |
+| GET | `/api/teams/my` | Authenticated — teams you belong to |
+| POST | `/api/teams/join` | Authenticated — join via team code |
+| POST | `/api/checkins` | Authenticated — submit hydration check-in |
+| GET | `/api/checkins/team/:teamId` | Manager only — live check-in board |
+
+### Manager — `/api/manager`
+
+Manager-specific operations. See `backend/routes/managerRoutes.js` for the full list.
+
+---
+
+## Database scripts
+
+### `fixEmailIndex.js`
+
+**Run this once if you're pulling this onto an existing database.**
+
+Older versions had a plain unique index on `email`, which broke registration for users who didn't provide one (they'd all conflict on `null`/`""`). This script:
+
+1. Drops the old `email_1` index
+2. Clears `email: ""` and `email: null` from existing user documents (`$unset`)
+3. Creates a new **partial** unique index — only enforces uniqueness when `email` is a non-empty string
+
+```bash
+node backend/scripts/fixEmailIndex.js
+```
+
+Safe to run more than once. The Mongoose schema already defines the correct index; this script just fixes existing databases that still have the old one.
+
+---
+
+## Git notes
+
+- Never stage `.env` or `node_modules/`. Run `git status` before committing if you're unsure.
+- After pulling: `npm run install:all` to sync dependencies.
+- After pulling schema changes (like the email index): run `node backend/scripts/fixEmailIndex.js`.
+- Keep commits focused — one feature or fix per commit.
+
+---
+
+## Troubleshooting
+
+**`MONGO_URI` undefined on startup**
+`backend/.env` doesn't exist or is empty. Copy from `.env.example` and fill in the URI.
+
+**`ECONNREFUSED 127.0.0.1:27017`**
+Local MongoDB isn't running. On Windows: `net start MongoDB` as admin, or use `services.msc`. Alternatively switch to Atlas.
+
+**Port 5000 already in use**
 ```powershell
-# In terminal 1:
-npm run dev:backend
-
-# In terminal 2:
-npm run dev:frontend
+Get-NetTCPConnection -LocalPort 5000
+Stop-Process -Id <PID> -Force
 ```
 
-### Pre-Configuring the Official Manager & Admin Accounts
+**Camera doesn't open in Settings**
+Browser blocked camera access, or you're not on `localhost`/HTTPS (WebRTC requirement). Click the lock icon in the address bar → allow Camera. Or just use "Choose from Gallery" instead.
 
-To seed or verify the official fixed Manager and Admin accounts, run:
+**"Current password is incorrect" on password change**
+You're entering the wrong current password. It's case-sensitive.
 
-```powershell
-# Seed Manager Account (Phone: 9876501234, Password: Manager@123)
-npm run seed:manager
-# Or: node backend/scripts/seedManager.js
+**Weather shows fallback data**
+`WEATHER_API_KEY` is missing or the free tier limit is hit. The app won't crash — it shows safe fallback values — but set a valid key for real data.
 
-# Seed Admin Account (Phone: 9876504321, Password: Admin@123)
-npm run seed:admin
-# Or: node backend/scripts/seedAdmin.js
+**Voice button does nothing / no audio**
+`SARVAM_API_KEY` isn't set. The app falls back to the browser's Web Speech API. Set the key in `.env` to get the proper Indian-accent voice (`bulbul:v3`).
+
+**Registration fails: "not a valid Gujarat city" or "not a valid area"**
+You're sending a city or area that isn't in the validated list. Only use the values from the dropdowns in the registration form — both frontend and backend check this independently.
+
+**`E11000 duplicate key error` on the email field**
+Old database with a strict unique index on email. Run:
+```bash
+node backend/scripts/fixEmailIndex.js
 ```
-
----
-
-Open `http://localhost:5173` in your browser:
-* **Worker:** Register on `/register` (public registration is restricted to Worker accounts) and land on `/dashboard`.
-* **Manager:** Log in with `9876501234` / `Manager@123` to land on `/manager`.
-* **Admin:** Log in with `9876504321` / `Admin@123` to land on `/admin`.
-* **Settings:** Access `/settings` from the top navigation bar or by clicking on your avatar.
-
----
-
-## 📡 API Endpoint Reference
-
-All endpoints except authentication and assistant status require an `Authorization: Bearer <token>` header.
-
-### **1. Authentication & Profile (`/api/auth`)**
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/auth/register` | Public | Register user (`name`, `phone`, `password`, `occupation`, `location`, `language`, `email?`, `profilePhoto?`). Registration is strictly restricted to `worker` role. |
-| `POST` | `/api/auth/login` | Public | Authenticate with `phone` & `password`; returns JWT token & user profile object |
-| `GET` | `/api/auth/me` | Protected | Fetch current authenticated user's profile |
-| `PUT` | `/api/auth/me` | Protected | Update profile fields (`name`, `email`, `phone`, `occupation` for workers, `location`, `emergencyContactName`, `emergencyContactPhone`, `language`, `profilePhoto`) |
-| `PUT` | `/api/auth/change-password` | Protected | Change password (`oldPassword`, `newPassword`). Enforces current password bcrypt check and strong password rules. |
-
-### **2. Heat Alerts & Guidance (`/api/alerts`)**
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/alerts?city={city}&job={job}` | Protected | Live heat index, temperature, humidity, danger tier, and occupation-specific work-rest guidelines |
-| `GET` | `/api/alerts/forecast?city={city}` | Protected | 24-hour heat forecast timeline (3-hr blocks) and identified safe working windows |
-
-### **3. Cooling Centers (`/api/cooling-centers`)**
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/cooling-centers` | Protected | Fetch all active cooling shelters, rest areas, and water points with coordinates |
-| `POST` | `/api/cooling-centers` | Admin Only | Add a new verified cooling center |
-| `DELETE`| `/api/cooling-centers/:id` | Admin Only | Delete an existing cooling center |
-
-### **4. Hotspot Reporting (`/api/hotspots`)**
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/hotspots` | Protected | Retrieve all reported heat hotspots |
-| `POST` | `/api/hotspots` | Protected | Submit a heat hotspot report (`title`, `location`, `intensity`, `description`) |
-| `PUT` | `/api/hotspots/:id` | Admin Only | Update hotspot verification status (`Pending`, `Verified`, `Resolved`) |
-
-### **5. Voice & Multilingual Assistant**
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/assistant/status` | Public | Check if Sarvam AI multilingual assistant is enabled on the server |
-| `POST` | `/api/assistant` | Protected | Query conversational heat safety assistant (`message`, `language`, `city`). Includes 15 req/hr rate limiting and emergency phrase interception. |
-| `POST` | `/api/speak` | Protected | Generate native audio speech via Sarvam AI TTS (`text`, `lang`: `en` \| `hi` \| `gu`). Powered by `bulbul:v3` with Indic translation and audio caching. |
-
-### **6. Team & Check-In System (Manager Operations)**
-| Method | Endpoint | Access | Description |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/api/teams` | Manager Only | Create a worker management team |
-| `GET` | `/api/teams/my` | Protected | Retrieve teams associated with the current user |
-| `POST` | `/api/teams/join` | Protected | Join a team using team code / ID |
-| `POST` | `/api/checkins` | Protected | Submit hydration and safety check-in status |
-| `GET` | `/api/checkins/team/:teamId`| Manager Only | View live check-in board and status of team members |
-
----
-
-## 🤝 Git & Collaboration Best Practices
-
-1. **Never Commit Secrets or Dependencies**:
-   * Verify that `.env` and `node_modules/` are untracked before staging:
-     ```powershell
-     git status
-     ```
-2. **When Pulling Updates from Team Members**:
-   ```powershell
-   git pull origin main
-   npm run install:all
-   ```
-3. **Use Meaningful Commits**:
-   Keep commits focused on specific features or fixes (e.g., `feat: implement profile settings and in-app password change`).
-
----
-
-## ❓ Troubleshooting & FAQ
-
-#### Q1: `MongoDB connection failed: The uri parameter to openUri() must be a string, got "undefined"`
-* **Cause**: `MONGO_URI` is missing or empty in `backend/.env`.
-* **Fix**: Ensure `backend/.env` exists and contains a valid URI (e.g. `MONGO_URI=mongodb://127.0.0.1:27017/chhaya` or your MongoDB Atlas connection string).
-
-#### Q2: `MongoDB connection failed: connect ECONNREFUSED 127.0.0.1:27017`
-* **Cause**: Local MongoDB service is not started on your machine.
-* **Fix**:
-  * On Windows: Open Services app (`services.msc`) and start `MongoDB Server`, or run `net start MongoDB` as Administrator.
-  * Alternatively, switch `MONGO_URI` to a free MongoDB Atlas cloud cluster.
-
-#### Q3: `Port 5000 is already in use` (`EADDRINUSE`)
-* **Cause**: Another Node instance or server process is already running on port 5000.
-* **Fix**: Terminate the previous process or check running processes:
-  ```powershell
-  # Windows PowerShell
-  Get-NetTCPConnection -LocalPort 5000
-  Stop-Process -Id <PID> -Force
-  ```
-
-#### Q4: Camera does not open when clicking "Take Photo" in Settings
-* **Cause**: The browser blocked camera permissions or the site is being accessed over an insecure connection (WebRTC requires `localhost` or `HTTPS`).
-* **Fix**:
-  * In Chrome/Edge: Click the lock/settings icon in the URL address bar and set **Camera** to **Allow**.
-  * Use the "Choose from Gallery" button as a quick alternative to upload an image from storage.
-
-#### Q5: Password update fails with "Current password is incorrect"
-* **Cause**: The entered current password does not match the hashed password stored in the database.
-* **Fix**: Ensure you enter your exact current password (case-sensitive) before setting a new password.
-
-#### Q6: Weather data shows fallback or fails to load
-* **Cause**: `WEATHER_API_KEY` is missing or invalid in `backend/.env`.
-* **Fix**: Sign up for a free OpenWeatherMap API key at [openweathermap.org](https://openweathermap.org/) and place it in `backend/.env`. The backend has built-in offline fallbacks to keep the UI functioning even during API limits.
-
-#### Q7: Voice read-aloud button does not play audio
-* **Cause**: `SARVAM_API_KEY` is not configured.
-* **Fix**: Without a Sarvam AI key, the application automatically falls back to your browser's native Web Speech API synthesis. Configure `SARVAM_API_KEY` in `backend/.env` to enable natural Indian accent voices (`bulbul:v3`, speaker `ritu`).
 
 ---
 
 <div align="center">
-  <sub>Built with ❤️ to protect outdoor workers from extreme heat stress across India.</sub>
+  <sub>Built to protect outdoor workers from extreme heat across India.</sub>
 </div>
